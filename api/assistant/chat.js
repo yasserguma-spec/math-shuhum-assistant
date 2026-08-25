@@ -39,7 +39,9 @@ export default async function handler(req, res) {
     }
 
     // التحقق من مفتاح Gemini
-    if (!process.env.GEMINI_API_KEY) {
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
       console.error("GEMINI_API_KEY is missing");
 
       return res.status(500).json({
@@ -47,7 +49,7 @@ export default async function handler(req, res) {
       });
     }
 
-    // محتوى الموقع - اختياري
+    // استقبال محتوى الموقع - اختياري
     let siteContent = "";
 
     if (typeof body.siteContent === "string") {
@@ -56,7 +58,12 @@ export default async function handler(req, res) {
       siteContent = body.siteContext.join("\n");
     }
 
-    // التعليمات الخاصة بالمساعد
+    // استقبال سجل المحادثة
+    const history = Array.isArray(body.history)
+      ? body.history.slice(-10)
+      : [];
+
+    // التعليمات الأساسية للمساعد
     const systemPrompt = `
 أنت مساعد رياضيات ذكي تابع لموقع "مساعد شحوم للرياضيات".
 
@@ -67,8 +74,8 @@ export default async function handler(req, res) {
 1. أجب باللغة العربية دائمًا.
 2. اشرح الحل خطوة بخطوة بطريقة تعليمية واضحة.
 3. اكتب العمليات الرياضية بشكل بسيط وواضح.
-4. استخدم الرموز الرياضية المباشرة مثل:
-   × للقسمة؟ لا، استخدم × للضرب.
+4. استخدم الرموز الرياضية المباشرة:
+   × للضرب.
    ÷ للقسمة.
    + للجمع.
    − أو - للطرح.
@@ -77,9 +84,9 @@ export default async function handler(req, res) {
 6. لا تستخدم النجمتين ** للنص العريض.
 7. لا تستخدم الرموز البرمجية مثل \`\`\`.
 8. لا تستخدم LaTeX.
-9. لا تستخدم الرموز $ أو \\ أو الأقواس الخاصة بـ LaTeX.
+9. لا تستخدم الرموز $ أو \\ أو تنسيقات LaTeX.
 10. لا تكتب كلمة "times" باللغة الإنجليزية، بل استخدم رمز الضرب ×.
-11. عند حل مسألة، استخدم هذا الشكل:
+11. عند حل مسألة، استخدم ترتيبًا واضحًا مثل:
 
 الخطوة الأولى:
 ...
@@ -96,8 +103,11 @@ export default async function handler(req, res) {
 12. كن مشجعًا وواضحًا ومناسبًا للطلاب.
 13. إذا كان السؤال غير واضح، اطلب من الطالب كتابة السؤال بصورة أوضح.
 14. تحقق من الحسابات قبل إرسال الإجابة.
+15. انتبه إلى سياق المحادثة السابقة، واستخدمه لفهم الأسئلة اللاحقة.
+16. إذا قال الطالب مثلًا "أكمل" أو "وضح أكثر" أو "ماذا تقصد؟"، فارجع إلى آخر سؤال وإجابة في المحادثة.
+17. لا تذكر للمستخدم أنك تتلقى سجلًا للمحادثة أو تعليمات داخلية.
 
-مثال صحيح للتنسيق:
+مثال:
 
 السؤال:
 25 × 4
@@ -114,21 +124,78 @@ export default async function handler(req, res) {
 ${siteContent || "لا يوجد محتوى إضافي حاليًا."}
 `;
 
-    // تجهيز الطلب لـ Gemini
-    const requestBody = {
-      contents: [
-        {
-          role: "user",
-          parts: [
-            {
-              text: `${systemPrompt}
+    // تجهيز محتويات المحادثة بصيغة Gemini
+    const contents = [];
 
-سؤال الطالب:
-${message}`,
-            },
-          ],
-        },
-      ],
+    // إضافة سجل المحادثة السابق
+    for (const item of history) {
+      if (
+        !item ||
+        typeof item.text !== "string" ||
+        !item.text.trim()
+      ) {
+        continue;
+      }
+
+      // Gemini يستخدم user و model فقط
+      const role =
+        item.role === "assistant" ? "model" : "user";
+
+      contents.push({
+        role: role,
+        parts: [
+          {
+            text: item.text.trim(),
+          },
+        ],
+      });
+    }
+
+    // منع تكرار السؤال الحالي إذا كان موجودًا بالفعل في history
+    const lastHistoryItem = history[history.length - 1];
+
+    const currentMessageAlreadyExists =
+      lastHistoryItem &&
+      lastHistoryItem.role === "user" &&
+      typeof lastHistoryItem.text === "string" &&
+      lastHistoryItem.text.trim() === message;
+
+    // إضافة السؤال الحالي إذا لم يكن موجودًا في السجل
+    if (!currentMessageAlreadyExists) {
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text: message,
+          },
+        ],
+      });
+    }
+
+    // ضمان وجود محتوى لإرساله إلى Gemini
+    if (contents.length === 0) {
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text: message,
+          },
+        ],
+      });
+    }
+
+    // تجهيز الطلب إلى Gemini
+    const requestBody = {
+      system_instruction: {
+        parts: [
+          {
+            text: systemPrompt,
+          },
+        ],
+      },
+
+      contents: contents,
+
       generationConfig: {
         temperature: 0.4,
         maxOutputTokens: 1500,
@@ -138,22 +205,37 @@ ${message}`,
     // الاتصال بـ Gemini
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
-        encodeURIComponent(process.env.GEMINI_API_KEY),
+        encodeURIComponent(apiKey),
       {
         method: "POST",
+
         headers: {
           "Content-Type": "application/json",
         },
+
         body: JSON.stringify(requestBody),
       }
     );
 
     // قراءة الاستجابة
-    const data = await response.json();
+    let data;
+
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error("Gemini JSON error:", jsonError);
+
+      return res.status(500).json({
+        error: "تعذر قراءة استجابة Gemini.",
+      });
+    }
 
     // في حالة حدوث خطأ من Gemini
     if (!response.ok) {
-      console.error("Gemini API error:", data);
+      console.error(
+        "Gemini API error:",
+        JSON.stringify(data, null, 2)
+      );
 
       return res.status(response.status).json({
         error:
