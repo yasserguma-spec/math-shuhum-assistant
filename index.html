@@ -255,8 +255,6 @@
     const messages = document.getElementById("messages");
     const button = document.getElementById("sendButton");
 
-    let conversationHistory = [];
-
     button.addEventListener("click", sendMessage);
 
     input.addEventListener("keydown", function(event) {
@@ -283,6 +281,12 @@
     }
 
     function showTyping() {
+      const oldTyping = document.getElementById("typingMessage");
+
+      if (oldTyping) {
+        oldTyping.remove();
+      }
+
       const typingMessage = document.createElement("div");
 
       typingMessage.className = "message assistant";
@@ -327,11 +331,6 @@
 
       addMessage(text, "user");
 
-      conversationHistory.push({
-        role: "user",
-        text: text
-      });
-
       input.value = "";
       input.disabled = true;
       button.disabled = true;
@@ -342,14 +341,14 @@
       try {
         const response = await fetch("/api/assistant/chat", {
           method: "POST",
+
           headers: {
             "Content-Type": "application/json"
           },
+
           body: JSON.stringify({
-            query: text,
-            mode: "smart",
-            history: conversationHistory.slice(-10),
-            siteContext: []
+            message: text,
+            siteContent: ""
           })
         });
 
@@ -359,32 +358,27 @@
           data = await response.json();
         } catch (jsonError) {
           throw new Error(
-            "تعذر قراءة استجابة الخادم. يرجى التحقق من إعداد API."
+            "تعذر قراءة استجابة الخادم. تأكد من أن ملف API يعمل بشكل صحيح."
           );
         }
 
         if (!response.ok) {
           throw new Error(
-            data.message ||
             data.error ||
+            data.message ||
             `حدث خطأ في الخادم (${response.status})`
           );
         }
 
         const answer =
-          data.answer ||
           data.reply ||
+          data.answer ||
           data.message ||
           "لم يتم استلام إجابة من المساعد.";
 
         removeTyping();
 
         addMessage(answer, "assistant");
-
-        conversationHistory.push({
-          role: "assistant",
-          text: answer
-        });
 
       } catch (error) {
         removeTyping();
