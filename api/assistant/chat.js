@@ -5,6 +5,7 @@ const client = new OpenAI({
 });
 
 export default async function handler(req, res) {
+  // السماح بطلبات POST فقط
   if (req.method !== "POST") {
     return res.status(405).json({
       error: "Method not allowed",
@@ -12,38 +13,63 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { message, siteContent = "" } = req.body || {};
+    // استقبال البيانات بطريقة آمنة
+    let body = req.body;
 
-    if (!message || typeof message !== "string" || !message.trim()) {
+    // إذا وصلت البيانات كنص JSON، نحولها إلى كائن
+    if (typeof body === "string") {
+      try {
+        body = JSON.parse(body);
+      } catch (parseError) {
+        return res.status(400).json({
+          error: "تعذر قراءة بيانات السؤال المرسلة إلى المساعد.",
+        });
+      }
+    }
+
+    // استخراج السؤال
+    const message =
+      body && typeof body.message === "string"
+        ? body.message.trim()
+        : "";
+
+    const siteContent =
+      body && typeof body.siteContent === "string"
+        ? body.siteContent
+        : "";
+
+    // التحقق من السؤال
+    if (!message) {
       return res.status(400).json({
-        error: "يرجى كتابة سؤال في الرياضيات.",
+        error: "لم يتم استلام السؤال. يرجى كتابة سؤالك في الرياضيات.",
       });
     }
 
+    // التحقق من مفتاح OpenAI
     if (!process.env.OPENAI_API_KEY) {
       return res.status(500).json({
-        error: "مفتاح OPENAI_API_KEY غير موجود في إعدادات Vercel.",
+        error: "مفتاح OPENAI_API_KEY غير موجود في إعدادات المشروع.",
       });
     }
 
+    // إرسال السؤال إلى OpenAI
     const response = await client.responses.create({
       model: "gpt-5.6",
       input: [
         {
           role: "system",
           content: `
-أنت مساعد رياضيات ذكي تابع لموقع "رياضيات بلاد الشحوم".
+أنت مساعد رياضيات ذكي تابع لموقع "مساعد شحوم للرياضيات".
 
-اتبع التعليمات التالية:
-- أجب دائمًا باللغة العربية.
+تعليماتك:
+- أجب باللغة العربية دائمًا.
 - ساعد الطلاب والمعلمين في مادة الرياضيات.
-- اشرح الحل بطريقة واضحة ومنظمة.
-- عند حل مسألة رياضية، اشرح الحل خطوة بخطوة.
-- استخدم الرموز والمعادلات الرياضية بشكل واضح.
-- كن مشجعًا ومناسبًا للطلاب.
-- إذا كان السؤال غير واضح، اطلب توضيحه.
-- لا تقدم معلومات غير صحيحة.
-- استخدم محتوى الموقع إذا كان مفيدًا للإجابة.
+- اشرح الحلول الرياضية خطوة بخطوة.
+- كن واضحًا ومشجعًا.
+- استخدم الرموز والمعادلات الرياضية بطريقة سهلة.
+- إذا كان السؤال غير واضح، اطلب من المستخدم توضيحه.
+- لا تخترع معلومات أو نتائج غير صحيحة.
+- إذا كان محتوى الموقع مفيدًا، استخدمه في الإجابة.
 
 محتوى الموقع:
 ${siteContent}
@@ -51,15 +77,14 @@ ${siteContent}
         },
         {
           role: "user",
-          content: message.trim(),
+          content: message,
         },
       ],
     });
 
+    // إعادة إجابة المساعد
     return res.status(200).json({
-      reply:
-        response.output_text ||
-        "عذرًا، لم يتمكن المساعد من إنشاء إجابة.",
+      reply: response.output_text || "لم يتم إنشاء إجابة من المساعد.",
     });
 
   } catch (error) {
