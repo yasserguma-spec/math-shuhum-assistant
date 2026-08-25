@@ -13,6 +13,7 @@
 
     body {
       margin: 0;
+      min-height: 100vh;
       font-family: Arial, Tahoma, sans-serif;
       background: #f4f6f8;
       color: #222;
@@ -23,6 +24,7 @@
       color: white;
       text-align: center;
       padding: 25px 15px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
     }
 
     header h1 {
@@ -33,6 +35,7 @@
     header p {
       margin: 10px 0 0;
       font-size: 16px;
+      opacity: 0.95;
     }
 
     .container {
@@ -44,7 +47,7 @@
     .chat-box {
       background: white;
       border-radius: 15px;
-      box-shadow: 0 5px 25px rgba(0,0,0,0.08);
+      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
       overflow: hidden;
     }
 
@@ -53,6 +56,7 @@
       overflow-y: auto;
       padding: 20px;
       background: #fafafa;
+      scroll-behavior: smooth;
     }
 
     .message {
@@ -62,6 +66,7 @@
       max-width: 85%;
       line-height: 1.8;
       white-space: pre-wrap;
+      word-wrap: break-word;
     }
 
     .user {
@@ -69,6 +74,7 @@
       color: white;
       margin-right: 0;
       margin-left: auto;
+      border-bottom-left-radius: 3px;
     }
 
     .assistant {
@@ -76,6 +82,13 @@
       color: #222;
       margin-right: auto;
       margin-left: 0;
+      border-bottom-right-radius: 3px;
+    }
+
+    .error-message {
+      background: #fff1f2;
+      color: #b91c1c;
+      border: 1px solid #fecdd3;
     }
 
     .welcome {
@@ -95,11 +108,19 @@
 
     #messageInput {
       flex: 1;
+      min-width: 0;
       padding: 14px;
       border: 1px solid #ddd;
       border-radius: 10px;
       font-size: 16px;
       font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    #messageInput:focus {
+      border-color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
     }
 
     button {
@@ -111,10 +132,15 @@
       font-size: 16px;
       font-family: inherit;
       cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
     }
 
-    button:hover {
+    button:hover:not(:disabled) {
       background: #152c6b;
+    }
+
+    button:active:not(:disabled) {
+      transform: scale(0.98);
     }
 
     button:disabled {
@@ -122,13 +148,59 @@
       cursor: not-allowed;
     }
 
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dots {
+      display: inline-flex;
+      gap: 4px;
+    }
+
+    .dots span {
+      width: 7px;
+      height: 7px;
+      background: #64748b;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+
+    .dots span:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .dots span:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+      0%, 60%, 100% {
+        transform: translateY(0);
+      }
+
+      30% {
+        transform: translateY(-5px);
+      }
+    }
+
     @media (max-width: 600px) {
       header h1 {
         font-size: 23px;
       }
 
+      header p {
+        font-size: 14px;
+      }
+
       #messages {
         height: 380px;
+        padding: 15px;
+      }
+
+      .message {
+        max-width: 92%;
       }
 
       .input-area {
@@ -146,7 +218,7 @@
 
   <header>
     <h1>🧮 مساعد شحوم للرياضيات</h1>
-    <p>مساعد ذكي لمساعدتك في حل مسائل الرياضيات</p>
+    <p>مساعد ذكي لمساعدتك في فهم وحل مسائل الرياضيات</p>
   </header>
 
   <main class="container">
@@ -158,7 +230,7 @@
           <br>
           أنا مساعد شحوم للرياضيات.
           <br>
-          اكتب سؤالك أو المسألة الرياضية وسأساعدك في الحل.
+          اكتب سؤالك أو المسألة الرياضية وسأساعدك في الحل خطوة بخطوة.
         </div>
       </div>
 
@@ -170,7 +242,7 @@
           autocomplete="off"
         >
 
-        <button id="sendButton">
+        <button id="sendButton" type="button">
           إرسال
         </button>
       </div>
@@ -183,29 +255,67 @@
     const messages = document.getElementById("messages");
     const button = document.getElementById("sendButton");
 
+    let conversationHistory = [];
+
     button.addEventListener("click", sendMessage);
 
     input.addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
+        event.preventDefault();
         sendMessage();
       }
     });
 
-    function addMessage(text, sender) {
+    function scrollToBottom() {
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addMessage(text, sender, extraClass = "") {
       const message = document.createElement("div");
 
-      message.className = "message " + sender;
+      message.className = `message ${sender} ${extraClass}`;
       message.textContent = text;
 
       messages.appendChild(message);
+      scrollToBottom();
 
-      messages.scrollTop = messages.scrollHeight;
+      return message;
+    }
+
+    function showTyping() {
+      const typingMessage = document.createElement("div");
+
+      typingMessage.className = "message assistant";
+      typingMessage.id = "typingMessage";
+
+      typingMessage.innerHTML = `
+        <div class="typing">
+          <span>جاري التفكير</span>
+          <span class="dots">
+            <span></span>
+            <span></span>
+            <span></span>
+          </span>
+        </div>
+      `;
+
+      messages.appendChild(typingMessage);
+      scrollToBottom();
+    }
+
+    function removeTyping() {
+      const typingMessage = document.getElementById("typingMessage");
+
+      if (typingMessage) {
+        typingMessage.remove();
+      }
     }
 
     async function sendMessage() {
       const text = input.value.trim();
 
       if (!text) {
+        input.focus();
         return;
       }
 
@@ -217,10 +327,17 @@
 
       addMessage(text, "user");
 
+      conversationHistory.push({
+        role: "user",
+        text: text
+      });
+
       input.value = "";
       input.disabled = true;
       button.disabled = true;
       button.textContent = "جاري التفكير...";
+
+      showTyping();
 
       try {
         const response = await fetch("/api/assistant/chat", {
@@ -229,31 +346,60 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            message: text,
-            siteContent: ""
+            query: text,
+            mode: "smart",
+            history: conversationHistory.slice(-10),
+            siteContext: []
           })
         });
 
-        const data = await response.json();
+        let data;
 
-        if (!response.ok) {
+        try {
+          data = await response.json();
+        } catch (jsonError) {
           throw new Error(
-            data.error || "حدث خطأ أثناء الاتصال بالمساعد."
+            "تعذر قراءة استجابة الخادم. يرجى التحقق من إعداد API."
           );
         }
 
-        addMessage(
-          data.reply || data.message || "لم يتم استلام رد من المساعد.",
-          "assistant"
-        );
+        if (!response.ok) {
+          throw new Error(
+            data.message ||
+            data.error ||
+            `حدث خطأ في الخادم (${response.status})`
+          );
+        }
+
+        const answer =
+          data.answer ||
+          data.reply ||
+          data.message ||
+          "لم يتم استلام إجابة من المساعد.";
+
+        removeTyping();
+
+        addMessage(answer, "assistant");
+
+        conversationHistory.push({
+          role: "assistant",
+          text: answer
+        });
 
       } catch (error) {
+        removeTyping();
+
+        console.error("Assistant connection error:", error);
+
         addMessage(
-          "حدث خطأ أثناء الاتصال بالمساعد: " + error.message,
-          "assistant"
+          "تعذر الاتصال بالمساعد حاليًا: " + error.message,
+          "assistant",
+          "error-message"
         );
 
       } finally {
+        removeTyping();
+
         input.disabled = false;
         button.disabled = false;
         button.textContent = "إرسال";
@@ -264,4 +410,3 @@
 
 </body>
 </html>
-<!-- Deploy update -->
