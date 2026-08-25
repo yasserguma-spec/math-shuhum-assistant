@@ -7,39 +7,29 @@ export default async function handler(req, res) {
   }
 
   try {
-    // استقبال البيانات
     let body = req.body;
 
-    // إذا وصلت البيانات كنص نحولها إلى JSON
+    // إذا وصل الطلب كنص نحوله إلى JSON
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
-      } catch (parseError) {
+      } catch (error) {
         return res.status(400).json({
           error: "تعذر قراءة بيانات السؤال المرسلة إلى الخادم.",
         });
       }
     }
 
-    // التأكد من وجود البيانات
+    // ضمان وجود بيانات
     body = body || {};
 
-    // استقبال السؤال من message أو query
+    // استقبال السؤال سواء باسم query أو message
     const message =
-      typeof body.message === "string"
-        ? body.message.trim()
-        : typeof body.query === "string"
+      typeof body.query === "string"
         ? body.query.trim()
+        : typeof body.message === "string"
+        ? body.message.trim()
         : "";
-
-    // استقبال محتوى الموقع إن وجد
-    let siteContent = "";
-
-    if (typeof body.siteContent === "string") {
-      siteContent = body.siteContent;
-    } else if (Array.isArray(body.siteContext)) {
-      siteContent = body.siteContext.join("\n");
-    }
 
     // التحقق من وجود السؤال
     if (!message) {
@@ -48,114 +38,131 @@ export default async function handler(req, res) {
       });
     }
 
-    // التحقق من وجود مفتاح Gemini
+    // التحقق من مفتاح Gemini
     if (!process.env.GEMINI_API_KEY) {
       console.error("GEMINI_API_KEY is missing");
 
       return res.status(500).json({
-        error:
-          "مفتاح GEMINI_API_KEY غير موجود في إعدادات Vercel.",
+        error: "مفتاح GEMINI_API_KEY غير موجود في إعدادات Vercel.",
       });
     }
 
-    // التعليمات الأساسية للمساعد
-    const systemInstruction = `
-أنت مساعد رياضيات ذكي تابع لموقع "رياضيات بلاد الشحوم".
+    // محتوى الموقع - اختياري
+    let siteContent = "";
 
-مهمتك هي مساعدة الطلاب والمعلمين في مادة الرياضيات.
+    if (typeof body.siteContent === "string") {
+      siteContent = body.siteContent;
+    } else if (Array.isArray(body.siteContext)) {
+      siteContent = body.siteContext.join("\n");
+    }
 
-التعليمات:
+    // التعليمات الخاصة بالمساعد
+    const systemPrompt = `
+أنت مساعد رياضيات ذكي تابع لموقع "مساعد شحوم للرياضيات".
 
-- أجب دائمًا باللغة العربية.
-- اشرح المسائل الرياضية خطوة بخطوة.
-- لا تعطِ الإجابة النهائية فقط.
-- اشرح طريقة التفكير والحل بصورة تعليمية واضحة.
-- استخدم لغة مناسبة للطلاب.
-- كن دقيقًا في العمليات الحسابية.
-- عند وجود معادلة، اكتب خطوات الحل بشكل منظم.
-- عند وجود خطأ في السؤال أو غموض، اطلب توضيحًا بطريقة لطيفة.
-- شجع الطالب على التعلم والفهم.
-- يمكنك استخدام الرموز الرياضية بشكل واضح.
-- إذا كان السؤال بسيطًا، اجعل الإجابة مختصرة وواضحة.
-- إذا كان السؤال يحتاج شرحًا، قدم شرحًا تفصيليًا خطوة بخطوة.
-- لا تدّعِ وجود معلومات في الموقع إذا لم تكن موجودة.
+مهمتك هي مساعدة الطلاب والمعلمين في فهم وحل مسائل الرياضيات.
+
+اتبع التعليمات التالية بدقة:
+
+1. أجب باللغة العربية دائمًا.
+2. اشرح الحل خطوة بخطوة بطريقة تعليمية واضحة.
+3. اكتب العمليات الرياضية بشكل بسيط وواضح.
+4. استخدم الرموز الرياضية المباشرة مثل:
+   × للقسمة؟ لا، استخدم × للضرب.
+   ÷ للقسمة.
+   + للجمع.
+   − أو - للطرح.
+   = للمساواة.
+5. لا تستخدم لغة Markdown.
+6. لا تستخدم النجمتين ** للنص العريض.
+7. لا تستخدم الرموز البرمجية مثل \`\`\`.
+8. لا تستخدم LaTeX.
+9. لا تستخدم الرموز $ أو \\ أو الأقواس الخاصة بـ LaTeX.
+10. لا تكتب كلمة "times" باللغة الإنجليزية، بل استخدم رمز الضرب ×.
+11. عند حل مسألة، استخدم هذا الشكل:
+
+الخطوة الأولى:
+...
+
+الخطوة الثانية:
+...
+
+الخطوة الثالثة:
+...
+
+الإجابة النهائية:
+...
+
+12. كن مشجعًا وواضحًا ومناسبًا للطلاب.
+13. إذا كان السؤال غير واضح، اطلب من الطالب كتابة السؤال بصورة أوضح.
+14. تحقق من الحسابات قبل إرسال الإجابة.
+
+مثال صحيح للتنسيق:
+
+السؤال:
+25 × 4
+
+الخطوة الأولى:
+نضرب العدد 25 في العدد 4.
+
+25 × 4 = 100
+
+الإجابة النهائية:
+100
 
 محتوى إضافي من الموقع:
-
-${siteContent || "لا يوجد محتوى إضافي للموقع حاليًا."}
+${siteContent || "لا يوجد محتوى إضافي حاليًا."}
 `;
 
-    // إعداد محتوى الطلب إلى Gemini
+    // تجهيز الطلب لـ Gemini
     const requestBody = {
-      system_instruction: {
-        parts: [
-          {
-            text: systemInstruction,
-          },
-        ],
-      },
-
       contents: [
         {
           role: "user",
           parts: [
             {
-              text: message,
+              text: `${systemPrompt}
+
+سؤال الطالب:
+${message}`,
             },
           ],
         },
       ],
-
       generationConfig: {
         temperature: 0.4,
-        maxOutputTokens: 2048,
+        maxOutputTokens: 1500,
       },
     };
 
     // الاتصال بـ Gemini
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
+        encodeURIComponent(process.env.GEMINI_API_KEY),
       {
         method: "POST",
-
         headers: {
           "Content-Type": "application/json",
         },
-
         body: JSON.stringify(requestBody),
       }
     );
 
     // قراءة الاستجابة
-    let data;
+    const data = await response.json();
 
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      console.error("Gemini JSON error:", jsonError);
-
-      return res.status(500).json({
-        error: "تعذر قراءة استجابة Gemini.",
-      });
-    }
-
-    // معالجة أخطاء Gemini
+    // في حالة حدوث خطأ من Gemini
     if (!response.ok) {
-      console.error(
-        "Gemini API error:",
-        JSON.stringify(data, null, 2)
-      );
-
-      const errorMessage =
-        data?.error?.message ||
-        "حدث خطأ أثناء الاتصال بخدمة Gemini.";
+      console.error("Gemini API error:", data);
 
       return res.status(response.status).json({
-        error: errorMessage,
+        error:
+          data?.error?.message ||
+          "حدث خطأ أثناء الاتصال بمساعد Gemini.",
       });
     }
 
-    // استخراج الإجابة من Gemini
+    // استخراج الإجابة
     const reply =
       data?.candidates?.[0]?.content?.parts
         ?.map((part) => part.text || "")
@@ -163,10 +170,11 @@ ${siteContent || "لا يوجد محتوى إضافي للموقع حاليًا.
         .trim() ||
       "لم يتمكن المساعد من إنشاء إجابة.";
 
-    // إرسال الإجابة إلى الموقع
+    // إعادة الإجابة للموقع
     return res.status(200).json({
       success: true,
       reply: reply,
+      answer: reply,
     });
 
   } catch (error) {
