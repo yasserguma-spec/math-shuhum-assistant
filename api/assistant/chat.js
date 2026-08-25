@@ -50,11 +50,10 @@ export default async function handler(req, res) {
     if (!message) {
       return res.status(400).json({
         error: "لم يتم استلام السؤال. يرجى كتابة سؤال في الرياضيات.",
-        received: body,
       });
     }
 
-    // التحقق من مفتاح OpenAI
+    // التحقق من وجود مفتاح OpenAI
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY is missing");
 
@@ -78,9 +77,8 @@ export default async function handler(req, res) {
 - اشرح الحلول الرياضية خطوة بخطوة.
 - كن واضحًا ودقيقًا ومشجعًا.
 - استخدم محتوى الموقع إذا كان يحتوي على معلومات مرتبطة بالسؤال.
-- إذا لم تجد الإجابة في محتوى الموقع، قدم إجابة تعليمية دقيقة من معرفتك.
+- إذا لم تجد الإجابة في محتوى الموقع، قدم إجابة تعليمية دقيقة.
 - لا تدّعِ وجود معلومات في الموقع إذا لم تكن موجودة.
-- عند حل المسائل، اكتب خطوات الحل بصورة منظمة وسهلة الفهم.
 
 محتوى الموقع:
 ${siteContent || "لا يوجد محتوى إضافي للموقع حاليًا."}
@@ -105,14 +103,9 @@ ${siteContent || "لا يوجد محتوى إضافي للموقع حاليًا.
   } catch (error) {
     console.error("Assistant error:", error);
 
-    // رسالة خطأ أكثر تفصيلًا في سجلات Vercel
-    const errorMessage =
-      error?.message ||
-      "حدث خطأ غير معروف أثناء الاتصال بالمساعد الذكي.";
-
     return res.status(500).json({
       error: "حدث خطأ أثناء الاتصال بالمساعد الذكي.",
-      details: errorMessage,
+      details: error?.message || "خطأ غير معروف.",
     });
   }
 }
