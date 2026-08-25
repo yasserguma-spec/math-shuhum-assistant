@@ -8,45 +8,59 @@ export default async function handler(req, res) {
   // السماح بطلبات POST فقط
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "Method not allowed",
+      error: "هذه الطريقة غير مسموح بها. استخدم POST.",
     });
   }
 
   try {
-    // قراءة البيانات القادمة من الموقع
+    // طباعة نوع البيانات للتشخيص في Vercel Logs
+    console.log("Request body type:", typeof req.body);
+    console.log("Request body:", req.body);
+
     let body = req.body;
 
-    // إذا كانت البيانات نصًا نحاول تحويلها إلى JSON
+    // إذا لم تصل البيانات
+    if (!body) {
+      return res.status(400).json({
+        error: "لم يتم استلام بيانات السؤال.",
+      });
+    }
+
+    // إذا وصلت البيانات على شكل نص
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
-      } catch (parseError) {
+      } catch (error) {
+        console.error("JSON parse error:", error);
+
         return res.status(400).json({
-          error: "تعذر قراءة البيانات المرسلة.",
+          error: "البيانات المرسلة ليست بصيغة JSON صحيحة.",
         });
       }
     }
 
-    // استخراج السؤال
+    // استخراج الرسالة
     const message =
-      body && typeof body.message === "string"
+      typeof body.message === "string"
         ? body.message.trim()
         : "";
 
-    // استخراج محتوى الموقع إن وجد
+    // استخراج محتوى الموقع
     const siteContent =
-      body && typeof body.siteContent === "string"
+      typeof body.siteContent === "string"
         ? body.siteContent
         : "";
 
-    // التأكد من وجود سؤال
+    // التأكد من السؤال
     if (!message) {
+      console.error("Message is missing or empty:", body);
+
       return res.status(400).json({
-        error: "يرجى كتابة سؤال في الرياضيات.",
+        error: "لم يتم استلام سؤال صحيح. يرجى كتابة سؤال في الرياضيات.",
       });
     }
 
-    // التأكد من وجود مفتاح OpenAI
+    // التأكد من مفتاح API
     if (!process.env.OPENAI_API_KEY) {
       console.error("OPENAI_API_KEY is missing");
 
@@ -55,7 +69,10 @@ export default async function handler(req, res) {
       });
     }
 
-    // الاتصال بخدمة OpenAI
+    console.log("Sending request to OpenAI...");
+    console.log("User message:", message);
+
+    // الاتصال بـ OpenAI
     const response = await client.responses.create({
       model: "gpt-5.6",
       input: [
@@ -64,15 +81,17 @@ export default async function handler(req, res) {
           content: `
 أنت مساعد رياضيات ذكي تابع لموقع "رياضيات بلاد الشحوم".
 
-تعليماتك:
+تعليماتك الأساسية:
 - أجب باللغة العربية.
 - ساعد الطلاب والمعلمين في مادة الرياضيات.
-- اشرح الحلول الرياضية خطوة بخطوة.
-- كن واضحًا ومشجعًا وتفاعليًا.
-- تحقق من العمليات الحسابية قبل تقديم الإجابة.
-- إذا كان السؤال يحتاج شرحًا، فاشرحه بطريقة مناسبة للطالب.
-- لا تدّعِ وجود محتوى في الموقع إذا لم يكن موجودًا.
-- استخدم محتوى الموقع إذا كان مرتبطًا بسؤال المستخدم.
+- اشرح الحل خطوة بخطوة.
+- تحقق من العمليات الحسابية قبل تقديم النتيجة.
+- استخدم أسلوبًا تعليميًا واضحًا ومناسبًا للطلاب.
+- كن مشجعًا وتفاعليًا.
+- إذا كان السؤال بسيطًا، قدم الإجابة بشكل مختصر وواضح.
+- إذا طلب المستخدم شرحًا، قدم شرحًا تفصيليًا.
+- استخدم محتوى الموقع عند ارتباطه بالسؤال.
+- لا تدّعِ وجود معلومات في محتوى الموقع إذا لم تكن موجودة.
 
 محتوى الموقع:
 ${siteContent}
@@ -85,11 +104,14 @@ ${siteContent}
       ],
     });
 
-    // إعادة الرد للموقع
+    const reply =
+      response.output_text ||
+      "عذرًا، لم يتمكن المساعد من إنشاء إجابة.";
+
+    console.log("OpenAI response received successfully.");
+
     return res.status(200).json({
-      reply:
-        response.output_text ||
-        "لم يتم استلام رد من المساعد.",
+      reply: reply,
     });
 
   } catch (error) {
