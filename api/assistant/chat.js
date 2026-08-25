@@ -8,69 +8,91 @@ export default async function handler(req, res) {
   // السماح بطلبات POST فقط
   if (req.method !== "POST") {
     return res.status(405).json({
-      error: "هذه الطريقة غير مسموح بها. استخدم POST.",
+      error: "Method not allowed. استخدم طلب POST فقط.",
     });
   }
 
   try {
-    // طباعة نوع البيانات للتشخيص في Vercel Logs
+    // معلومات تشخيصية تظهر في Vercel Logs
+    console.log("=== NEW REQUEST ===");
+    console.log("Request method:", req.method);
     console.log("Request body type:", typeof req.body);
     console.log("Request body:", req.body);
 
     let body = req.body;
 
-    // إذا لم تصل البيانات
+    // التحقق من وصول البيانات
     if (!body) {
+      console.error("DEBUG: req.body is empty");
+
       return res.status(400).json({
-        error: "لم يتم استلام بيانات السؤال.",
+        error: "DEBUG: req.body فارغ تمامًا. لم تصل بيانات السؤال إلى الخادم.",
       });
     }
 
-    // إذا وصلت البيانات على شكل نص
+    // إذا كانت البيانات نصًا، نحاول تحويلها إلى JSON
     if (typeof body === "string") {
+      console.log("DEBUG: body is string, trying JSON.parse...");
+
       try {
         body = JSON.parse(body);
-      } catch (error) {
-        console.error("JSON parse error:", error);
+      } catch (parseError) {
+        console.error("DEBUG: JSON parse failed:", parseError);
 
         return res.status(400).json({
-          error: "البيانات المرسلة ليست بصيغة JSON صحيحة.",
+          error:
+            "DEBUG: تعذر تحويل البيانات إلى JSON. البيانات المستلمة: " +
+            body,
         });
       }
     }
 
-    // استخراج الرسالة
+    console.log("DEBUG: processed body:", body);
+
+    // استخراج السؤال
     const message =
+      body &&
       typeof body.message === "string"
         ? body.message.trim()
         : "";
 
     // استخراج محتوى الموقع
     const siteContent =
+      body &&
       typeof body.siteContent === "string"
         ? body.siteContent
         : "";
 
-    // التأكد من السؤال
+    console.log("DEBUG: message:", message);
+    console.log("DEBUG: message type:", typeof message);
+
+    // التأكد من وجود السؤال
     if (!message) {
-      console.error("Message is missing or empty:", body);
+      console.error("DEBUG: message is missing or empty");
+      console.error("DEBUG: received body:", body);
 
       return res.status(400).json({
-        error: "لم يتم استلام سؤال صحيح. يرجى كتابة سؤال في الرياضيات.",
+        error:
+          "DEBUG: لم يتم العثور على message أو أنها فارغة. نوع البيانات: " +
+          typeof body +
+          " | البيانات المستلمة: " +
+          JSON.stringify(body),
       });
     }
 
-    // التأكد من مفتاح API
+    // التأكد من وجود مفتاح OpenAI
     if (!process.env.OPENAI_API_KEY) {
-      console.error("OPENAI_API_KEY is missing");
+      console.error("DEBUG: OPENAI_API_KEY is missing");
 
       return res.status(500).json({
-        error: "مفتاح OPENAI_API_KEY غير موجود في إعدادات Vercel.",
+        error:
+          "DEBUG: مفتاح OPENAI_API_KEY غير موجود في إعدادات Vercel.",
       });
     }
 
-    console.log("Sending request to OpenAI...");
-    console.log("User message:", message);
+    console.log("DEBUG: OPENAI_API_KEY exists");
+    console.log("DEBUG: Sending request to OpenAI...");
+    console.log("DEBUG: User question:", message);
 
     // الاتصال بـ OpenAI
     const response = await client.responses.create({
@@ -81,17 +103,17 @@ export default async function handler(req, res) {
           content: `
 أنت مساعد رياضيات ذكي تابع لموقع "رياضيات بلاد الشحوم".
 
-تعليماتك الأساسية:
+تعليماتك:
 - أجب باللغة العربية.
 - ساعد الطلاب والمعلمين في مادة الرياضيات.
-- اشرح الحل خطوة بخطوة.
-- تحقق من العمليات الحسابية قبل تقديم النتيجة.
-- استخدم أسلوبًا تعليميًا واضحًا ومناسبًا للطلاب.
-- كن مشجعًا وتفاعليًا.
-- إذا كان السؤال بسيطًا، قدم الإجابة بشكل مختصر وواضح.
-- إذا طلب المستخدم شرحًا، قدم شرحًا تفصيليًا.
-- استخدم محتوى الموقع عند ارتباطه بالسؤال.
-- لا تدّعِ وجود معلومات في محتوى الموقع إذا لم تكن موجودة.
+- اشرح الحلول الرياضية خطوة بخطوة.
+- تحقق من العمليات الحسابية قبل تقديم الإجابة.
+- كن واضحًا ومشجعًا وتفاعليًا.
+- استخدم أسلوبًا تعليميًا مناسبًا للطلاب.
+- إذا كان السؤال بسيطًا، أجب بإيجاز ووضوح.
+- إذا طلب المستخدم شرحًا، قدم شرحًا تفصيليًا خطوة بخطوة.
+- استخدم محتوى الموقع إذا كان مرتبطًا بسؤال المستخدم.
+- لا تدّعِ وجود محتوى في الموقع إذا لم يكن موجودًا.
 
 محتوى الموقع:
 ${siteContent}
@@ -104,23 +126,27 @@ ${siteContent}
       ],
     });
 
+    console.log("DEBUG: OpenAI response received successfully");
+
     const reply =
       response.output_text ||
-      "عذرًا، لم يتمكن المساعد من إنشاء إجابة.";
-
-    console.log("OpenAI response received successfully.");
+      "عذرًا، لم يتم استلام رد من المساعد.";
 
     return res.status(200).json({
       reply: reply,
     });
 
   } catch (error) {
-    console.error("Assistant error:", error);
+    console.error("=== ASSISTANT ERROR ===");
+    console.error(error);
 
     return res.status(500).json({
       error:
-        error?.message ||
-        "حدث خطأ أثناء الاتصال بالمساعد الذكي.",
+        "DEBUG: " +
+        (
+          error?.message ||
+          "حدث خطأ غير معروف أثناء الاتصال بالمساعد الذكي."
+        ),
     });
   }
 }
