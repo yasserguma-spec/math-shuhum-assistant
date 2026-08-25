@@ -51,6 +51,36 @@
       overflow: hidden;
     }
 
+    .settings-area {
+      padding: 15px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .settings-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #1e3a8a;
+    }
+
+    #gradeSelect {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      background: white;
+      font-size: 16px;
+      font-family: inherit;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #gradeSelect:focus {
+      border-color: #1e3a8a;
+      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+
     #messages {
       height: 430px;
       overflow-y: auto;
@@ -149,7 +179,6 @@
       cursor: not-allowed;
     }
 
-    /* زر محادثة جديدة */
     .new-chat-button {
       background: #64748b;
     }
@@ -241,19 +270,37 @@
   <main class="container">
     <div class="chat-box">
 
+      <!-- اختيار الصف الدراسي -->
+      <div class="settings-area">
+        <label class="settings-label" for="gradeSelect">
+          🎓 اختر الصف الدراسي
+        </label>
+
+        <select id="gradeSelect">
+          <option value="">اختر الصف الدراسي</option>
+          <option value="الصف الخامس">الصف الخامس</option>
+          <option value="الصف السادس">الصف السادس</option>
+          <option value="الصف السابع">الصف السابع</option>
+          <option value="الصف الثامن">الصف الثامن</option>
+          <option value="الصف التاسع">الصف التاسع</option>
+          <option value="الصف العاشر">الصف العاشر</option>
+          <option value="الصف الحادي عشر">الصف الحادي عشر</option>
+          <option value="الصف الثاني عشر">الصف الثاني عشر</option>
+        </select>
+      </div>
+
       <div id="messages">
         <div class="welcome">
           <strong>مرحبًا بك 👋</strong>
           <br>
           أنا مساعد شحوم للرياضيات.
           <br>
-          اكتب سؤالك أو المسألة الرياضية وسأساعدك في الحل خطوة بخطوة.
+          اختر صفك الدراسي، ثم اكتب سؤالك أو المسألة الرياضية.
         </div>
       </div>
 
       <div class="input-area">
 
-        <!-- زر بدء محادثة جديدة -->
         <button
           id="newChatButton"
           class="new-chat-button"
@@ -262,7 +309,6 @@
           محادثة جديدة
         </button>
 
-        <!-- مربع السؤال -->
         <input
           id="messageInput"
           type="text"
@@ -270,7 +316,6 @@
           autocomplete="off"
         >
 
-        <!-- زر الإرسال -->
         <button id="sendButton" type="button">
           إرسال
         </button>
@@ -281,26 +326,17 @@
   </main>
 
   <script>
-    // العناصر الرئيسية
     const input = document.getElementById("messageInput");
     const messages = document.getElementById("messages");
     const button = document.getElementById("sendButton");
     const newChatButton = document.getElementById("newChatButton");
+    const gradeSelect = document.getElementById("gradeSelect");
 
-
-    // سجل المحادثة داخل الصفحة
     let conversationHistory = [];
 
-
-    // الضغط على زر إرسال
     button.addEventListener("click", sendMessage);
-
-
-    // الضغط على زر محادثة جديدة
     newChatButton.addEventListener("click", startNewChat);
 
-
-    // الإرسال عند الضغط على Enter
     input.addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         event.preventDefault();
@@ -308,14 +344,10 @@
       }
     });
 
-
-    // الانتقال إلى أسفل المحادثة
     function scrollToBottom() {
       messages.scrollTop = messages.scrollHeight;
     }
 
-
-    // إضافة رسالة جديدة
     function addMessage(text, sender, extraClass = "") {
       const message = document.createElement("div");
 
@@ -323,20 +355,13 @@
       message.textContent = text;
 
       messages.appendChild(message);
-
       scrollToBottom();
 
       return message;
     }
 
-
-    // إظهار رسالة جاري التفكير
     function showTyping() {
-      const oldTyping = document.getElementById("typingMessage");
-
-      if (oldTyping) {
-        oldTyping.remove();
-      }
+      removeTyping();
 
       const typingMessage = document.createElement("div");
 
@@ -355,12 +380,9 @@
       `;
 
       messages.appendChild(typingMessage);
-
       scrollToBottom();
     }
 
-
-    // إزالة رسالة جاري التفكير
     function removeTyping() {
       const typingMessage = document.getElementById("typingMessage");
 
@@ -369,97 +391,63 @@
       }
     }
 
-
-    // بدء محادثة جديدة
     function startNewChat() {
-      // إزالة سجل المحادثة
       conversationHistory = [];
-
-
-      // إزالة أي رسالة تفكير
       removeTyping();
 
-
-      // إعادة رسالة الترحيب
       messages.innerHTML = `
         <div class="welcome">
           <strong>مرحبًا بك 👋</strong>
           <br>
           أنا مساعد شحوم للرياضيات.
           <br>
-          اكتب سؤالك أو المسألة الرياضية وسأساعدك في الحل خطوة بخطوة.
+          اختر صفك الدراسي، ثم اكتب سؤالك أو المسألة الرياضية.
         </div>
       `;
 
-
-      // إعادة حالة مربع الإدخال
       input.value = "";
-      input.disabled = false;
-
-
-      // إعادة حالة زر الإرسال
-      button.disabled = false;
-      button.textContent = "إرسال";
-
-
-      // إعادة حالة زر المحادثة الجديدة
-      newChatButton.disabled = false;
-
-
-      // وضع المؤشر في مربع الكتابة
       input.focus();
     }
 
-
-    // إرسال السؤال إلى المساعد
     async function sendMessage() {
       const text = input.value.trim();
+      const grade = gradeSelect.value;
 
+      if (!grade) {
+        alert("يرجى اختيار الصف الدراسي أولًا.");
+        gradeSelect.focus();
+        return;
+      }
 
-      // منع إرسال سؤال فارغ
       if (!text) {
         input.focus();
         return;
       }
 
-
-      // إزالة رسالة الترحيب عند أول سؤال
       const welcome = document.querySelector(".welcome");
 
       if (welcome) {
         welcome.remove();
       }
 
-
-      // عرض سؤال المستخدم
       addMessage(text, "user");
 
-
-      // حفظ سؤال المستخدم في سجل المحادثة
       conversationHistory.push({
         role: "user",
         text: text
       });
 
-
-      // تفريغ مربع الكتابة
       input.value = "";
-
-
-      // تعطيل العناصر أثناء انتظار الإجابة
       input.disabled = true;
       button.disabled = true;
       newChatButton.disabled = true;
+      gradeSelect.disabled = true;
 
       button.textContent = "جاري التفكير...";
 
-
-      // إظهار رسالة التفكير
       showTyping();
 
-
       try {
-        // إرسال السؤال إلى API
         const response = await fetch("/api/assistant/chat", {
           method: "POST",
 
@@ -469,16 +457,14 @@
 
           body: JSON.stringify({
             message: text,
+            grade: grade,
             siteContent: "",
             history: conversationHistory.slice(-10)
           })
         });
 
-
         let data;
 
-
-        // قراءة الاستجابة
         try {
           data = await response.json();
         } catch (jsonError) {
@@ -487,8 +473,6 @@
           );
         }
 
-
-        // التحقق من وجود خطأ
         if (!response.ok) {
           throw new Error(
             data.error ||
@@ -497,69 +481,40 @@
           );
         }
 
-
-        // استخراج الإجابة
         const answer =
           data.reply ||
           data.answer ||
           data.message ||
           "لم يتم استلام إجابة من المساعد.";
 
-
-        // إزالة رسالة التفكير
         removeTyping();
-
-
-        // عرض إجابة المساعد
         addMessage(answer, "assistant");
 
-
-        // حفظ إجابة المساعد في سجل المحادثة
         conversationHistory.push({
           role: "assistant",
           text: answer
         });
 
-
       } catch (error) {
-        // إزالة رسالة التفكير
         removeTyping();
 
+        console.error("Assistant connection error:", error);
 
-        // طباعة الخطأ في Console
-        console.error(
-          "Assistant connection error:",
-          error
-        );
-
-
-        // عرض رسالة الخطأ للمستخدم
         addMessage(
           "تعذر الاتصال بالمساعد حاليًا: " + error.message,
           "assistant",
           "error-message"
         );
 
-
       } finally {
-        // التأكد من إزالة رسالة التفكير
         removeTyping();
 
-
-        // إعادة تفعيل مربع الكتابة
         input.disabled = false;
-
-
-        // إعادة تفعيل زر الإرسال
         button.disabled = false;
-        button.textContent = "إرسال";
-
-
-        // إعادة تفعيل زر محادثة جديدة
         newChatButton.disabled = false;
+        gradeSelect.disabled = false;
 
-
-        // إعادة المؤشر إلى مربع الكتابة
+        button.textContent = "إرسال";
         input.focus();
       }
     }
