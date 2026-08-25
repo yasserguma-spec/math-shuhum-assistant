@@ -13,16 +13,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    // استقبال البيانات بطريقة آمنة
+    // قراءة البيانات القادمة من الموقع
     let body = req.body;
 
-    // إذا وصلت البيانات كنص JSON، نحولها إلى كائن
+    // إذا كانت البيانات نصًا نحاول تحويلها إلى JSON
     if (typeof body === "string") {
       try {
         body = JSON.parse(body);
       } catch (parseError) {
         return res.status(400).json({
-          error: "تعذر قراءة بيانات السؤال المرسلة إلى المساعد.",
+          error: "تعذر قراءة البيانات المرسلة.",
         });
       }
     }
@@ -33,43 +33,46 @@ export default async function handler(req, res) {
         ? body.message.trim()
         : "";
 
+    // استخراج محتوى الموقع إن وجد
     const siteContent =
       body && typeof body.siteContent === "string"
         ? body.siteContent
         : "";
 
-    // التحقق من السؤال
+    // التأكد من وجود سؤال
     if (!message) {
       return res.status(400).json({
-        error: "لم يتم استلام السؤال. يرجى كتابة سؤالك في الرياضيات.",
+        error: "يرجى كتابة سؤال في الرياضيات.",
       });
     }
 
-    // التحقق من مفتاح OpenAI
+    // التأكد من وجود مفتاح OpenAI
     if (!process.env.OPENAI_API_KEY) {
+      console.error("OPENAI_API_KEY is missing");
+
       return res.status(500).json({
-        error: "مفتاح OPENAI_API_KEY غير موجود في إعدادات المشروع.",
+        error: "مفتاح OPENAI_API_KEY غير موجود في إعدادات Vercel.",
       });
     }
 
-    // إرسال السؤال إلى OpenAI
+    // الاتصال بخدمة OpenAI
     const response = await client.responses.create({
       model: "gpt-5.6",
       input: [
         {
           role: "system",
           content: `
-أنت مساعد رياضيات ذكي تابع لموقع "مساعد شحوم للرياضيات".
+أنت مساعد رياضيات ذكي تابع لموقع "رياضيات بلاد الشحوم".
 
 تعليماتك:
-- أجب باللغة العربية دائمًا.
+- أجب باللغة العربية.
 - ساعد الطلاب والمعلمين في مادة الرياضيات.
 - اشرح الحلول الرياضية خطوة بخطوة.
-- كن واضحًا ومشجعًا.
-- استخدم الرموز والمعادلات الرياضية بطريقة سهلة.
-- إذا كان السؤال غير واضح، اطلب من المستخدم توضيحه.
-- لا تخترع معلومات أو نتائج غير صحيحة.
-- إذا كان محتوى الموقع مفيدًا، استخدمه في الإجابة.
+- كن واضحًا ومشجعًا وتفاعليًا.
+- تحقق من العمليات الحسابية قبل تقديم الإجابة.
+- إذا كان السؤال يحتاج شرحًا، فاشرحه بطريقة مناسبة للطالب.
+- لا تدّعِ وجود محتوى في الموقع إذا لم يكن موجودًا.
+- استخدم محتوى الموقع إذا كان مرتبطًا بسؤال المستخدم.
 
 محتوى الموقع:
 ${siteContent}
@@ -82,9 +85,11 @@ ${siteContent}
       ],
     });
 
-    // إعادة إجابة المساعد
+    // إعادة الرد للموقع
     return res.status(200).json({
-      reply: response.output_text || "لم يتم إنشاء إجابة من المساعد.",
+      reply:
+        response.output_text ||
+        "لم يتم استلام رد من المساعد.",
     });
 
   } catch (error) {
