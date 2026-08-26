@@ -1,524 +1,863 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
-<head>
+ <head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260825-05-ee72b97","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script><script src="/_sdk/50d846425a1e5082.telemetry_sdk.js" integrity="sha512-Otbex+ztlVbcEGql0rXGd/3E3ee/hqAntg6DeuUEMG6pIPbXGOSvZbFZVzknAXi1tH/itQ+ijEhOTr2aWj6CXg=="></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>مساعد شحوم للرياضيات</title>
-
+  <title>رياضيات بلاد الشهوم</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&amp;display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: Arial, Tahoma, sans-serif;
-      background: #f4f6f8;
-      color: #222;
-    }
-
-    header {
-      background: #1e3a8a;
-      color: white;
-      text-align: center;
-      padding: 25px 15px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-    }
-
-    header h1 {
-      margin: 0;
-      font-size: 28px;
-    }
-
-    header p {
-      margin: 10px 0 0;
-      font-size: 16px;
-      opacity: 0.95;
-    }
-
-    .container {
-      max-width: 850px;
-      margin: 30px auto;
-      padding: 0 15px;
-    }
-
-    .chat-box {
-      background: white;
-      border-radius: 15px;
-      box-shadow: 0 5px 25px rgba(0, 0, 0, 0.08);
-      overflow: hidden;
-    }
-
-    .settings-area {
-      padding: 15px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e5e7eb;
-    }
-
-    .settings-label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-      color: #1e3a8a;
-    }
-
-    #gradeSelect {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 10px;
-      background: white;
-      font-size: 16px;
-      font-family: inherit;
-      outline: none;
-      cursor: pointer;
-    }
-
-    #gradeSelect:focus {
-      border-color: #1e3a8a;
-      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
-    }
-
-    #messages {
-      height: 430px;
-      overflow-y: auto;
-      padding: 20px;
-      background: #fafafa;
-      scroll-behavior: smooth;
-    }
-
-    .message {
-      margin-bottom: 15px;
-      padding: 12px 16px;
-      border-radius: 12px;
-      max-width: 85%;
-      line-height: 1.8;
-      white-space: pre-wrap;
-      word-wrap: break-word;
-    }
-
-    .user {
-      background: #1e3a8a;
-      color: white;
-      margin-right: 0;
-      margin-left: auto;
-      border-bottom-left-radius: 3px;
-    }
-
-    .assistant {
-      background: #e8eefc;
-      color: #222;
-      margin-right: auto;
-      margin-left: 0;
-      border-bottom-right-radius: 3px;
-    }
-
-    .error-message {
-      background: #fff1f2;
-      color: #b91c1c;
-      border: 1px solid #fecdd3;
-    }
-
-    .welcome {
-      text-align: center;
-      color: #666;
-      padding: 40px 10px;
-      line-height: 2;
-    }
-
-    .input-area {
-      display: flex;
-      gap: 10px;
-      padding: 15px;
-      border-top: 1px solid #eee;
-      background: white;
-    }
-
-    #messageInput {
-      flex: 1;
-      min-width: 0;
-      padding: 14px;
-      border: 1px solid #ddd;
-      border-radius: 10px;
-      font-size: 16px;
-      font-family: inherit;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    #messageInput:focus {
-      border-color: #1e3a8a;
-      box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
-    }
-
-    button {
-      background: #1e3a8a;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 25px;
-      font-size: 16px;
-      font-family: inherit;
-      cursor: pointer;
-      transition: background 0.2s, transform 0.1s;
-      white-space: nowrap;
-    }
-
-    button:hover:not(:disabled) {
-      background: #152c6b;
-    }
-
-    button:active:not(:disabled) {
-      transform: scale(0.98);
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .new-chat-button {
-      background: #64748b;
-    }
-
-    .new-chat-button:hover:not(:disabled) {
-      background: #475569;
-    }
-
-    .typing {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .dots {
-      display: inline-flex;
-      gap: 4px;
-    }
-
-    .dots span {
-      width: 7px;
-      height: 7px;
-      background: #64748b;
-      border-radius: 50%;
-      animation: bounce 1.2s infinite;
-    }
-
-    .dots span:nth-child(2) {
-      animation-delay: 0.2s;
-    }
-
-    .dots span:nth-child(3) {
-      animation-delay: 0.4s;
-    }
-
-    @keyframes bounce {
-      0%, 60%, 100% {
-        transform: translateY(0);
-      }
-
-      30% {
-        transform: translateY(-5px);
-      }
-    }
-
-    @media (max-width: 600px) {
-      header h1 {
-        font-size: 23px;
-      }
-
-      header p {
-        font-size: 14px;
-      }
-
-      #messages {
-        height: 380px;
-        padding: 15px;
-      }
-
-      .message {
-        max-width: 92%;
-      }
-
-      .input-area {
-        padding: 10px;
-        gap: 7px;
-      }
-
-      button {
-        padding: 10px 12px;
-        font-size: 14px;
-      }
-
-      #messageInput {
-        padding: 12px 10px;
-        font-size: 14px;
-      }
-    }
+    body { font-family: 'Cairo', sans-serif; }
+    .card-hover { transition: transform 0.3s, box-shadow 0.3s; }
+    .card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 32px rgba(0,0,0,0.12); }
+    .nav-container { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .page-view { display: none; }
+    .page-view.active { display: block; }
   </style>
-</head>
-
-<body>
-
-  <header>
-    <h1>🧮 مساعد شحوم للرياضيات</h1>
-    <p>مساعد ذكي لمساعدتك في فهم وحل مسائل الرياضيات</p>
-  </header>
-
-  <main class="container">
-    <div class="chat-box">
-
-      <!-- اختيار الصف الدراسي -->
-      <div class="settings-area">
-        <label class="settings-label" for="gradeSelect">
-          🎓 اختر الصف الدراسي
-        </label>
-
-        <select id="gradeSelect">
-          <option value="">اختر الصف الدراسي</option>
-          <option value="الصف الخامس">الصف الخامس</option>
-          <option value="الصف السادس">الصف السادس</option>
-          <option value="الصف السابع">الصف السابع</option>
-          <option value="الصف الثامن">الصف الثامن</option>
-          <option value="الصف التاسع">الصف التاسع</option>
-          <option value="الصف العاشر">الصف العاشر</option>
-          <option value="الصف الحادي عشر">الصف الحادي عشر</option>
-          <option value="الصف الثاني عشر">الصف الثاني عشر</option>
-        </select>
-      </div>
-
-      <div id="messages">
-        <div class="welcome">
-          <strong>مرحبًا بك 👋</strong>
-          <br>
-          أنا مساعد شحوم للرياضيات.
-          <br>
-          اختر صفك الدراسي، ثم اكتب سؤالك أو المسألة الرياضية.
-        </div>
-      </div>
-
-      <div class="input-area">
-
-        <button
-          id="newChatButton"
-          class="new-chat-button"
-          type="button"
-        >
-          محادثة جديدة
-        </button>
-
-        <input
-          id="messageInput"
-          type="text"
-          placeholder="اكتب سؤالك في الرياضيات..."
-          autocomplete="off"
-        >
-
-        <button id="sendButton" type="button">
-          إرسال
-        </button>
-
-      </div>
-
+  <script src="/_sdk/b3bf9e8ac58e6ad6.data_sdk.js" type="text/javascript" integrity="sha512-otc1u9NYq9Ms5Jt//7vmhrrqR5CLPr8Jdgs6741gqniClfLMcfmC+jK/cKuQdhLv6G0esJ/FzaMS9tv0T/vj/Q=="></script>
+  <script src="/_sdk/a27879be4562f807.resizing_sdk.js" type="text/javascript" integrity="sha512-trcxRwz+QLrzK0Dqg95xqVRryR7WtWui2YopXyzOIr3WMde3j/xCRgT63/b/EAg7klDsAOuHzoRgoryhwm8QFw=="></script>
+ </head>
+ <body data-template-id="__page-root" class="min-h-screen w-full"><!-- Navbar -->
+  <nav class="sticky top-0 z-50 px-4 py-3">
+   <div class="max-w-7xl mx-auto nav-container px-6 py-3 flex items-center justify-between flex-wrap gap-3"><a href="#home" class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+     <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+      <i data-lucide="square-root" class="text-white w-5 h-5"></i>
+     </div><span data-template-id="nav-logo-text" class="canva-text font-bold text-blue-900 text-sm md:text-base"></span> </a>
+    <div id="nav-sections-links" class="hidden lg:flex items-center gap-4 text-sm font-semibold text-gray-700"><a href="#home" onclick="navigateTo('home')" class="hover:text-blue-600 transition">الرئيسية</a>
+    </div><button type="button" onclick="openAdminModal()" data-template-id="admin-btn" class="canva-button px-4 py-2 rounded-lg text-sm font-bold"></button>
+   </div>
+  </nav><!-- ===== HOME PAGE ===== -->
+  <div id="page-home" class="page-view active">
+   <section data-template-id="hero-section" class="canva-section py-16 md:py-24 text-center relative overflow-hidden">
+    <div class="absolute -left-6 -bottom-8 text-white/10 text-9xl font-serif select-none">
+     ∑
     </div>
-  </main>
-
+    <div class="absolute right-8 top-3 text-white/10 text-7xl font-serif select-none">
+     π
+    </div>
+    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-white/5 text-[12rem] font-serif select-none">
+     ∞
+    </div>
+    <div class="relative z-10 max-w-3xl mx-auto px-4">
+     <h1 data-template-id="hero-title" class="canva-text font-extrabold text-white mb-4"></h1>
+     <p data-template-id="hero-desc" class="canva-text text-white/90 leading-relaxed"></p>
+    </div>
+   </section>
+   <section class="max-w-7xl mx-auto px-4 py-12">
+    <h2 data-template-id="sections-title" class="canva-text font-bold text-center mb-10"></h2>
+    <div id="home-sections-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+   </section>
+   <section data-template-id="didyouknow-section" class="canva-section py-12">
+    <div class="max-w-4xl mx-auto px-4 text-center">
+     <h2 data-template-id="didyouknow-title" class="canva-text font-bold mb-4"></h2>
+     <p data-template-id="didyouknow-text" class="canva-text leading-relaxed"></p>
+    </div>
+   </section>
+   <section class="max-w-5xl mx-auto px-4 py-12">
+    <h2 data-template-id="whyus-title" class="canva-text font-bold text-center mb-8"></h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+     <div data-template-id="whyus-1" class="canva-card rounded-2xl p-6 text-center">
+      <div class="w-12 h-12 mx-auto bg-blue-100 rounded-xl flex items-center justify-center mb-3">
+       <i data-lucide="target" class="w-6 h-6 text-blue-600"></i>
+      </div>
+      <p data-template-id="whyus-1-text" class="canva-text font-semibold"></p>
+     </div>
+     <div data-template-id="whyus-2" class="canva-card rounded-2xl p-6 text-center">
+      <div class="w-12 h-12 mx-auto bg-green-100 rounded-xl flex items-center justify-center mb-3">
+       <i data-lucide="users" class="w-6 h-6 text-green-600"></i>
+      </div>
+      <p data-template-id="whyus-2-text" class="canva-text font-semibold"></p>
+     </div>
+     <div data-template-id="whyus-3" class="canva-card rounded-2xl p-6 text-center">
+      <div class="w-12 h-12 mx-auto bg-purple-100 rounded-xl flex items-center justify-center mb-3">
+       <i data-lucide="sparkles" class="w-6 h-6 text-purple-600"></i>
+      </div>
+      <p data-template-id="whyus-3-text" class="canva-text font-semibold"></p>
+     </div>
+    </div>
+   </section>
+   <section data-template-id="followus-section" class="canva-section py-10">
+    <div class="max-w-3xl mx-auto px-4 text-center">
+     <h2 data-template-id="followus-title" class="canva-text font-bold mb-3"></h2>
+     <p data-template-id="followus-text" class="canva-text"></p>
+    </div>
+   </section>
+  </div><!-- ===== SEMESTER 1 PAGE ===== -->
+  <div id="page-semester1" class="page-view">
+   <div class="max-w-7xl mx-auto px-4 pt-4"><a data-template-id="home-return" href="#home" onclick="navigateTo('home')" class="canva-button inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm shadow-sm hover:shadow-md transition"><i data-lucide="arrow-right" class="w-4 h-4"></i><span data-template-id="home-return-label" class="canva-text"></span></a>
+   </div>
+   <section data-template-id="banner-section" class="canva-section py-12 md:py-16 text-center relative overflow-hidden">
+    <div class="absolute -left-6 -bottom-8 text-white/10 text-8xl font-serif select-none">
+     ∑
+    </div>
+    <div class="absolute right-8 top-3 text-white/10 text-6xl font-serif select-none">
+     π
+    </div>
+    <div class="relative z-10 max-w-3xl mx-auto px-4">
+     <h1 id="section-page-title" class="font-extrabold text-white mb-4 text-3xl"></h1>
+     <p data-template-id="banner-desc" class="canva-text text-white/90 leading-relaxed"></p>
+    </div>
+   </section>
+   <main id="grades-view" class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex items-center gap-2 text-sm text-gray-500 mb-6"><a href="#home" onclick="navigateTo('home')" data-template-id="breadcrumb-home" class="canva-link hover:text-blue-600 transition"></a><span>←</span> <span id="breadcrumb-section-name" class="font-semibold text-blue-700"></span>
+    </div>
+    <h2 data-template-id="choose-grade-title" class="canva-text font-bold text-center mb-8"></h2>
+    <div id="grades-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5"></div>
+   </main>
+   <main id="grade-detail" class="max-w-7xl mx-auto px-4 py-10 hidden">
+    <div class="flex items-center gap-2 text-sm text-gray-500 mb-4"><a href="#home" onclick="navigateTo('home')" class="canva-link hover:text-blue-600 transition">الرئيسية</a><span>←</span> <span id="detail-section-breadcrumb" class="text-blue-700"></span><span>←</span> <span id="detail-breadcrumb" class="font-semibold text-blue-700"></span>
+    </div><button onclick="showGrades()" data-template-id="back-btn" class="canva-button flex items-center gap-2 px-5 py-2 rounded-xl font-semibold mb-8"><i data-lucide="arrow-right" class="w-4 h-4"></i><span data-template-id="back-btn-label" class="canva-text"></span></button>
+    <section data-template-id="detail-banner" class="canva-section rounded-3xl px-6 py-10 mb-8 text-center">
+     <h1 data-template-id="detail-banner-title" class="canva-text font-extrabold text-white mb-3"></h1>
+     <p data-template-id="detail-banner-desc" class="canva-text text-white/90"></p>
+    </section>
+    <h2 id="detail-title" class="font-bold text-2xl text-gray-900 mb-8 text-center"></h2>
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
+     <div onclick="openContent('الدروس')" role="button" tabindex="0" data-template-id="cat-lessons" class="canva-card card-hover rounded-2xl p-6 text-center border border-blue-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="book-open" class="w-7 h-7 text-blue-600"></i>
+      </div>
+      <p data-template-id="cat-lessons-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('الاختبارات')" role="button" tabindex="0" data-template-id="cat-tests" class="canva-card card-hover rounded-2xl p-6 text-center border border-red-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-red-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="clipboard-check" class="w-7 h-7 text-red-600"></i>
+      </div>
+      <p data-template-id="cat-tests-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('العروض التقديمية')" role="button" tabindex="0" data-template-id="cat-presentations" class="canva-card card-hover rounded-2xl p-6 text-center border border-purple-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="presentation" class="w-7 h-7 text-purple-600"></i>
+      </div>
+      <p data-template-id="cat-presentations-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('فيديوهات تعليمية')" role="button" tabindex="0" data-template-id="cat-videos" class="canva-card card-hover rounded-2xl p-6 text-center border border-orange-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-orange-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="video" class="w-7 h-7 text-orange-600"></i>
+      </div>
+      <p data-template-id="cat-videos-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('روابط مفيدة')" role="button" tabindex="0" data-template-id="cat-links" class="canva-card card-hover rounded-2xl p-6 text-center border border-teal-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-teal-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="link" class="w-7 h-7 text-teal-600"></i>
+      </div>
+      <p data-template-id="cat-links-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('ملخصات')" role="button" tabindex="0" data-template-id="cat-downloads" class="canva-card card-hover rounded-2xl p-6 text-center border border-indigo-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-indigo-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="download" class="w-7 h-7 text-indigo-600"></i>
+      </div>
+      <p data-template-id="cat-downloads-text" class="canva-text font-bold"></p>
+     </div>
+     <div onclick="openContent('أنشطة وتدريبات')" role="button" tabindex="0" data-template-id="cat-activities" class="canva-card card-hover rounded-2xl p-6 text-center border border-amber-100 cursor-pointer">
+      <div class="w-14 h-14 mx-auto bg-amber-100 rounded-2xl flex items-center justify-center mb-3">
+       <i data-lucide="puzzle" class="w-7 h-7 text-amber-600"></i>
+      </div>
+      <p data-template-id="cat-activities-text" class="canva-text font-bold"></p>
+     </div>
+    </div>
+    <section id="content-workspace" data-template-id="content-workspace" class="canva-panel mt-10 rounded-3xl p-6 md:p-8 hidden">
+     <h2 data-template-id="workspace-title" class="canva-text font-bold mb-2"></h2>
+     <p data-template-id="workspace-empty" class="canva-text mb-6"></p>
+     <div id="workspace-content-cards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    </section><button onclick="showGrades()" data-template-id="bottom-back-btn" class="canva-button mt-8 mx-auto flex items-center gap-2 px-6 py-3 rounded-xl font-semibold"></button>
+   </main>
+  </div><!-- ===== SMART MATH ASSISTANT PAGE ===== -->
+  <div id="page-math-assistant" class="page-view">
+   <main class="mx-auto w-full max-w-6xl px-4 py-8 md:py-12">
+    <section data-template-id="assistant-hero" class="canva-section mb-6 rounded-3xl p-6 text-white shadow-xl md:p-10">
+     <div class="flex flex-col items-center gap-5 text-center md:flex-row md:text-right">
+      <div class="flex h-20 w-20 shrink-0 items-center justify-center rounded-3xl bg-white/15 text-5xl" aria-hidden="true">
+       🤖
+      </div>
+      <div>
+       <h1 data-template-id="assistant-title" class="canva-text mb-2 font-extrabold"></h1>
+       <p data-template-id="assistant-subtitle" class="canva-text leading-relaxed"></p>
+      </div>
+     </div>
+    </section>
+    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg" aria-label="محادثة مساعد الرياضيات">
+     <div class="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+      <div class="flex items-center gap-2"><span class="h-3 w-3 rounded-full bg-emerald-500"></span><span data-template-id="assistant-status" class="canva-text text-sm font-semibold"></span>
+      </div><button type="button" onclick="startNewAssistantChat()" data-template-id="assistant-new-chat" class="canva-button rounded-xl px-3 py-2 text-sm font-bold"></button>
+     </div>
+     <div id="assistant-messages" class="min-h-[360px] max-h-[55vh] space-y-4 overflow-y-auto p-4 md:p-6" aria-live="polite"></div>
+     <div id="assistant-suggestions" class="flex flex-wrap gap-2 px-4 pb-4 md:px-6"></div>
+     <div class="flex flex-wrap items-center gap-2 px-4 pb-4 md:px-6" role="group" aria-label="خيارات البحث">
+      <button type="button" onclick="setAssistantMode('site')" data-template-id="assistant-mode-site" class="canva-button rounded-full border px-3 py-2 text-sm font-semibold">📚 ابحث في الموقع</button><button type="button" onclick="setAssistantMode('web')" data-template-id="assistant-mode-web" class="canva-button rounded-full border px-3 py-2 text-sm font-semibold">🌐 ابحث في الإنترنت</button><button type="button" onclick="setAssistantMode('smart')" data-template-id="assistant-mode-smart" class="canva-button rounded-full border px-3 py-2 text-sm font-semibold">🤖 ابحث بذكاء</button><span id="assistant-mode-status" class="text-xs font-semibold text-slate-500">🔵 الموقع أولًا · 🌐 السماح بالبحث عند الحاجة</span>
+     </div>
+     <form id="assistant-form" class="border-t border-slate-100 p-4 md:p-6"><label for="assistant-input" class="sr-only">اكتب سؤالك</label><textarea id="assistant-input" rows="3" required data-template-id="assistant-input" class="canva-input w-full resize-none rounded-2xl border border-slate-200 p-4 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" placeholder="اكتب سؤالك عن الرياضيات أو محتوى الموقع..."></textarea>
+      <div class="mt-3 flex flex-wrap items-center justify-between gap-3"><button type="button" onclick="attachAssistantText()" data-template-id="assistant-attach" class="canva-button inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 font-semibold"><i data-lucide="paperclip" class="h-4 w-4"></i><span data-template-id="assistant-attach-label" class="canva-text"></span></button><button type="submit" data-template-id="assistant-send" class="canva-button inline-flex items-center gap-2 rounded-xl px-5 py-3 font-bold"><i data-lucide="send" class="h-4 w-4"></i><span data-template-id="assistant-send-label" class="canva-text"></span></button>
+      </div>
+     </form>
+    </section>
+   </main>
+  </div><!-- ===== PROFESSIONAL DEVELOPMENT PAGE ===== -->
+  <div id="page-professional" class="page-view">
+   <div class="max-w-7xl mx-auto px-4 pt-4"><a href="#home" onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm shadow-sm hover:shadow-md transition bg-blue-900 text-white"><i data-lucide="arrow-right" class="w-4 h-4"></i><span>العودة إلى الرئيسية</span></a>
+   </div>
+   <section data-template-id="professional-banner" class="canva-section py-12 md:py-16 text-center relative overflow-hidden">
+    <div class="absolute -left-6 -bottom-8 text-white/10 text-8xl font-serif select-none">
+     ✦
+    </div>
+    <div class="absolute right-8 top-3 text-white/10 text-6xl font-serif select-none">
+     ◆
+    </div>
+    <div class="relative z-10 max-w-3xl mx-auto px-4">
+     <h1 id="professional-page-title" class="font-extrabold text-white mb-4 text-3xl"></h1>
+     <p data-template-id="professional-banner-desc" class="canva-text text-white/90 leading-relaxed"></p>
+    </div>
+   </section>
+   <main class="max-w-7xl mx-auto px-4 py-10">
+    <div id="professional-content-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    <p id="professional-empty" class="text-center text-slate-500 py-8">لا توجد محتويات حاليًا في هذا القسم.</p>
+   </main>
+  </div><!-- ===== GENERIC SECTION PAGE ===== -->
+  <div id="page-generic-section" class="page-view">
+   <div class="max-w-7xl mx-auto px-4 pt-4"><a href="#home" onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm shadow-sm hover:shadow-md transition bg-blue-900 text-white"><i data-lucide="arrow-right" class="w-4 h-4"></i><span>العودة إلى الرئيسية</span></a>
+   </div>
+   <section class="py-12 md:py-16 text-center relative overflow-hidden bg-gradient-to-l from-blue-800 to-blue-600">
+    <div class="relative z-10 max-w-3xl mx-auto px-4">
+     <h1 id="generic-section-title" class="font-extrabold text-white mb-4 text-3xl"></h1>
+    </div>
+   </section>
+   <main class="max-w-7xl mx-auto px-4 py-10">
+    <div id="generic-content-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
+    <p id="generic-empty" class="text-center text-slate-500 py-8">لا توجد محتويات حاليًا في هذا القسم.</p>
+   </main>
+  </div><!-- Admin Modal -->
+  <div id="admin-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 px-4" role="dialog" aria-modal="true">
+   <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl">
+    <div class="flex items-start justify-between gap-4">
+     <div>
+      <p data-template-id="admin-modal-kicker" class="canva-text mb-2 text-sm font-bold text-blue-600"></p>
+      <h2 data-template-id="admin-modal-title-text" class="canva-text text-2xl font-extrabold text-blue-950"></h2>
+     </div><button type="button" onclick="closeAdminModal()" data-template-id="admin-close-icon" class="canva-button rounded-full p-2 text-xl leading-none" aria-label="إغلاق"></button>
+    </div>
+    <p data-template-id="admin-modal-welcome" class="canva-text mt-4 leading-relaxed text-slate-600"></p>
+    <div class="mt-6 flex flex-col gap-3"><button type="button" onclick="activateAdminMode()" data-template-id="admin-login-button" class="canva-button rounded-xl bg-blue-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"></button> <button type="button" onclick="closeAdminModal()" data-template-id="admin-cancel-button" class="canva-button rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 transition hover:bg-slate-50"></button>
+    </div>
+   </div>
+  </div><!-- Admin Tools -->
+  <section id="admin-tools" data-template-id="admin-tools" class="canva-panel mx-auto mb-10 hidden w-full max-w-7xl rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
+   <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+     <h2 data-template-id="admin-tools-title" class="canva-text text-xl font-extrabold text-blue-950"></h2>
+     <p data-template-id="admin-tools-desc" class="canva-text mt-1 text-slate-500"></p>
+    </div><button type="button" onclick="logoutAdmin()" data-template-id="admin-logout-button" class="canva-button rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 transition hover:bg-slate-200"></button>
+   </div>
+   <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><button onclick="openAdminWorkspace('add')" data-template-id="admin-add" type="button" class="canva-button rounded-xl bg-blue-50 px-3 py-3 font-semibold text-blue-700"></button> <button onclick="openAdminWorkspace('edit')" data-template-id="admin-edit" type="button" class="canva-button rounded-xl bg-emerald-50 px-3 py-3 font-semibold text-emerald-700"></button> <button onclick="openAdminWorkspace('delete')" data-template-id="admin-delete" type="button" class="canva-button rounded-xl bg-rose-50 px-3 py-3 font-semibold text-rose-700"></button> <button onclick="openAdminWorkspace('manage')" data-template-id="admin-manage" type="button" class="canva-button rounded-xl bg-amber-50 px-3 py-3 font-semibold text-amber-700"></button>
+   </div>
+  </section><!-- Admin Workspace -->
+  <section id="admin-workspace" class="mx-auto mb-10 hidden w-full max-w-7xl px-4">
+   <div class="rounded-3xl border border-blue-100 bg-white p-5 shadow-sm md:p-8">
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+     <div>
+      <h2 class="text-2xl font-extrabold text-blue-950">إدارة المحتوى</h2>
+      <p class="mt-1 text-sm text-slate-500">أضف المحتوى وعدّله واحذفه من داخل الموقع.</p>
+     </div><button type="button" onclick="closeAdminWorkspace()" class="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-600 hover:bg-slate-50">إغلاق</button>
+    </div>
+    <div id="admin-editor" class="hidden rounded-2xl bg-blue-50/60 p-4 md:p-6">
+     <h3 id="editor-heading" class="mb-4 text-xl font-bold text-blue-950">إضافة المحتوى</h3>
+     <form id="content-form" class="grid grid-cols-1 gap-4 md:grid-cols-2"><label class="font-semibold text-blue-950" for="admin-content-title">عنوان المحتوى<input id="admin-content-title" required class="mt-2 w-full rounded-xl border border-blue-100 p-3" type="text"></label> <label class="font-semibold text-blue-950" for="admin-content-description">وصف مختصر<textarea id="admin-content-description" class="mt-2 w-full rounded-xl border border-blue-100 p-3" rows="2"></textarea></label> <label class="font-semibold text-blue-950" for="admin-content-section">القسم<select id="admin-content-section" class="mt-2 w-full rounded-xl border border-blue-100 p-3" onchange="handleSectionChange()"></select></label> <label id="grade-label" class="font-semibold text-blue-950" for="admin-content-grade">الصف<select id="admin-content-grade" class="mt-2 w-full rounded-xl border border-blue-100 p-3"></select></label> <label class="font-semibold text-blue-950" for="admin-content-type">النوع<select id="admin-content-type" class="mt-2 w-full rounded-xl border border-blue-100 p-3"><option>درس</option><option>ملخص</option><option>فيديو</option><option>رابط خارجي</option></select></label> <label class="font-semibold text-blue-950" for="admin-content-link">رابط المحتوى<input id="admin-content-link" class="mt-2 w-full rounded-xl border border-blue-100 p-3" type="url"></label> <label class="font-semibold text-blue-950" for="admin-content-image">صورة (رابط)<input id="admin-content-image" class="mt-2 w-full rounded-xl border border-blue-100 p-3" type="url"></label>
+      <div id="save-status" class="hidden md:col-span-2 rounded-xl px-4 py-3 font-semibold" role="status"></div>
+      <div class="flex items-end gap-3"><button id="save-content-button" type="submit" class="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">حفظ</button> <button type="button" onclick="closeAdminWorkspace()" class="rounded-xl border border-slate-200 px-5 py-3 font-semibold">إلغاء</button>
+      </div>
+     </form>
+    </div>
+    <div id="content-list-panel" class="hidden">
+     <h3 class="mb-4 text-xl font-bold text-blue-950">المحتويات</h3>
+     <div id="managed-content-list" class="grid gap-3"></div>
+    </div>
+    <div id="management-tabs" class="hidden">
+     <div class="mb-5 flex flex-wrap gap-2" role="tablist"><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" onclick="showManagementTab('sections')">الأقسام</button> <button class="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700" onclick="showManagementTab('grades')">الصفوف</button>
+     </div>
+     <div id="management-tab-content" class="rounded-2xl bg-slate-50 p-5 text-slate-700"></div>
+    </div>
+   </div>
+  </section>
+  <div id="logout-toast" data-template-id="logout-toast" class="canva-banner fixed bottom-6 left-1/2 z-[120] hidden -translate-x-1/2 rounded-2xl px-5 py-3 text-center font-semibold shadow-xl" role="status" aria-live="polite">
+   تم تسجيل الخروج من وضع الإدارة بنجاح
+  </div>
+  <footer data-template-id="footer" class="canva-footer py-8 px-4 text-center">
+   <p data-template-id="footer-text" class="canva-text text-sm"></p>
+   <p data-template-id="footer-credit" class="canva-text text-xs mt-2 opacity-80"></p>
+  </footer>
+  <script src="/_sdk/489148d8756906ef.editing_sdk.js" integrity="sha512-hxxSbMNp1t+UEu3j/dIQUU4MJnmsCo0Gs3iQVVS706vrCJ3Yt2+ySOlfJEaPyiyQVLjZRmn1dNVqg6M40VZZHQ=="></script>
   <script>
-    const input = document.getElementById("messageInput");
-    const messages = document.getElementById("messages");
-    const button = document.getElementById("sendButton");
-    const newChatButton = document.getElementById("newChatButton");
-    const gradeSelect = document.getElementById("gradeSelect");
+    lucide.createIcons();
 
-    let conversationHistory = [];
+    // ============ DATA ============
+    let allRecords = [];
+    let siteSections = []; // records with section === '__section__'
+    let siteGrades = [];   // records with section === '__grade__'
+    let contentRecords = []; // actual content
 
-    button.addEventListener("click", sendMessage);
-    newChatButton.addEventListener("click", startNewChat);
+    // Icons and colors for sections (by index fallback)
+    const sectionIcons = ['book-open','notebook-pen','lightbulb','library','star','bot','briefcase','folder','layers'];
+    const sectionColors = ['blue','green','purple','amber','rose','teal','cyan','indigo','orange'];
 
-    input.addEventListener("keydown", function(event) {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        sendMessage();
+    const defaultSectionRecords = [
+      ['أعمال الفصل الدراسي الأول', 'term1', 'book-open', 'blue'],
+      ['أعمال الفصل الدراسي الثاني', 'term2', 'notebook-pen', 'green'],
+      ['الوسائل التعليمية', 'learning-tools', 'lightbulb', 'purple'],
+      ['مكتبة الرياضيات', 'math-library', 'library', 'amber'],
+      ['مجيدات الرياضيات', 'math-achievements', 'star', 'rose'],
+      ['مساعد الرياضيات المدعوم بالذكاء الاصطناعي', 'math-assistant', 'bot', 'teal'],
+      ['التنمية المهنية', 'professional-development', 'briefcase', 'cyan']
+    ];
+    let sectionMigrationStarted = false;
+
+    function categorizeRecords(data) {
+      // Keep the last valid dataset when a transient SDK update is empty or malformed.
+      const isValidDataset = Array.isArray(data) && data.every(record => record && typeof record === 'object');
+      if (isValidDataset && data.length) allRecords = data;
+      const sourceRecords = Array.isArray(allRecords) ? allRecords : [];
+      // The homepage and admin panel intentionally derive sections from this same normalized array.
+      // Empty SDK updates are diagnostic events, not permission to erase the current section state.
+      // Read the same records used by administration; support both the current markers and legacy record_type rows.
+      siteSections = sourceRecords.filter(r => r.section === '__section__' || r.record_type === 'section' || (r.section_id && r.name && !r.title))
+        .map(r => ({ ...r, grade: r.grade || r.section_id, title: r.title || r.name, content_type: r.content_type || r.icon, link: r.link || r.color_class }))
+        .filter(r => r.grade && r.title)
+        .sort((a,b) => (Number(a.description || a.sort_order)||0) - (Number(b.description || b.sort_order)||0));
+      siteGrades = sourceRecords.filter(r => r.section === '__grade__' || r.record_type === 'grade')
+        .map(r => ({ ...r, grade: r.grade || r.grade_id, title: r.title || r.name, content_type: r.content_type || r.icon }))
+        .sort((a,b) => (Number(a.description || a.sort_order)||0) - (Number(b.description || b.sort_order)||0));
+      contentRecords = sourceRecords.filter(r => r.section !== '__section__' && r.section !== '__grade__' && r.record_type !== 'section' && r.record_type !== 'grade')
+        .map(r => ({ ...r, section: r.section || r.section_id }));
+      if (!siteSections.length) console.error('[رياضيات بلاد الشهوم] لم تُقرأ سجلات الأقسام. عدد السجلات:', allRecords.length);
+    }
+
+    async function migrateSectionsIfMissing(data) {
+      if (sectionMigrationStarted) return;
+      sectionMigrationStarted = true;
+      const stored = Array.isArray(data) ? data : allRecords;
+      const legacyIds = { semester1: 'term1', semester2: 'term2', 'teaching-aids': 'learning-tools', 'math-champions': 'math-achievements', 'ai-math-assistant': 'math-assistant', professional: 'professional-development' };
+      const existingIds = new Set(siteSections.map(r => r.grade).filter(Boolean));
+      // Normalize legacy section IDs in place so existing rows remain linked and intact.
+      for (const record of stored) {
+        const oldId = (record.section === '__section__' || record.record_type === 'section') ? (record.grade || record.section_id) : record.section;
+        const newId = legacyIds[oldId];
+        if (!newId) continue;
+        if (record.section === '__section__' || record.record_type === 'section') {
+          const result = await window.dataSdk.update({ ...record, grade: newId });
+          if (!result.isOk) { sectionMigrationStarted = false; return; }
+        } else if (record.section === oldId) {
+          const result = await window.dataSdk.update({ ...record, section: newId });
+          if (!result.isOk) { sectionMigrationStarted = false; return; }
+        }
+        existingIds.delete(oldId);
+        existingIds.add(newId);
       }
+      stored.filter(r => r.record_type === 'section' || r.section === '__section__').forEach(r => {
+        if (r.grade || r.section_id) existingIds.add(r.grade || r.section_id);
+      });
+      for (let i = 0; i < defaultSectionRecords.length; i++) {
+        const [title, id, icon, color] = defaultSectionRecords[i];
+        // Add only missing defaults; existing sections and content are never deleted.
+        if (existingIds.has(id)) continue;
+        const result = await window.dataSdk.create({
+          title, description: String(i), section: '__section__', grade: id,
+          content_type: icon, link: color, image_url: '', created_at: new Date().toISOString()
+        });
+        if (!result.isOk) { sectionMigrationStarted = false; return; }
+        existingIds.add(id);
+      }
+      sectionMigrationStarted = false;
+    }
+
+    function getSectionName(sectionId) {
+      const s = siteSections.find(r => r.grade === sectionId);
+      return s ? s.title : sectionId;
+    }
+
+    // ============ NAVIGATION ============
+    let currentSectionId = '';
+    let currentGrade = '';
+
+    function navigateTo(page) {
+      document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
+      const target = document.getElementById('page-' + page);
+      if (target) target.classList.add('active');
+      if (page === 'semester1') showGrades();
+      if (page === 'professional') renderProfessionalContent();
+      if (page === 'generic-section') renderGenericSection();
+      window.scrollTo(0, 0);
+    }
+
+    function navigateToSection(sectionId) {
+      currentSectionId = sectionId;
+      const sec = siteSections.find(r => r.grade === sectionId);
+      const name = sec ? sec.title : sectionId;
+      // Check if it has grades (content with this section that has grade field)
+      const hasGrades = contentRecords.some(r => r.section === sectionId && r.grade);
+      if (sectionId === 'math-assistant') {
+        navigateTo('math-assistant');
+        initAssistantChat();
+        return;
+      }
+      if (hasGrades) {
+        document.getElementById('section-page-title').textContent = name;
+        document.getElementById('breadcrumb-section-name').textContent = name;
+        navigateTo('semester1');
+      } else {
+        document.getElementById('generic-section-title').textContent = name;
+        if (document.getElementById('professional-page-title')) document.getElementById('professional-page-title').textContent = name;
+        navigateTo('generic-section');
+      }
+    }
+
+    function handleHash() {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'home' || !hash) navigateTo('home');
+    }
+    window.addEventListener('hashchange', handleHash);
+
+    // ============ HOME PAGE SECTIONS ============
+    function renderHomeSections() {
+      const grid = document.getElementById('home-sections-grid');
+      if (!grid) return;
+      const sectionsToRender = Array.isArray(siteSections) && siteSections.length
+        ? siteSections
+        : defaultSectionRecords.map(([title, id, icon, color], i) => ({
+            title, grade: id, content_type: icon, link: color, description: String(i)
+          }));
+      grid.innerHTML = sectionsToRender.map((sec, i) => {
+        const icon = sec.content_type || sectionIcons[i % sectionIcons.length];
+        const color = sec.link || sectionColors[i % sectionColors.length];
+        return `<button onclick="navigateToSection('${escapeHtml(sec.grade)}')" class="card-hover rounded-2xl p-8 text-center border border-${color}-100 cursor-pointer bg-white">
+          <div class="w-16 h-16 mx-auto bg-${color}-100 rounded-2xl flex items-center justify-center mb-4"><i data-lucide="${icon}" class="w-8 h-8 text-${color}-600"></i></div>
+          <p class="font-bold text-${color}-800">${escapeHtml(sec.title)}</p>
+        </button>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function renderNavLinks() {
+      const nav = document.getElementById('nav-sections-links');
+      nav.innerHTML = '<a href="#home" onclick="navigateTo(\'home\')" class="hover:text-blue-600 transition">الرئيسية</a>' +
+        siteSections.slice(0, 7).map(sec => `<a href="#" onclick="navigateToSection('${escapeHtml(sec.grade)}'); return false;" class="hover:text-blue-600 transition">${escapeHtml(sec.title)}</a>`).join('');
+    }
+
+    // ============ GRADES VIEW ============
+    const gradeIcons = ['calculator','ruler','triangle','pi-square','sigma','function-square','book-open','brain','graduation-cap','award'];
+
+    function renderGradesGrid() {
+      const grid = document.getElementById('grades-grid');
+      grid.innerHTML = siteGrades.map((g, i) => {
+        const icon = g.content_type || gradeIcons[i % gradeIcons.length];
+        return `<button onclick="showGrade('${escapeHtml(g.grade)}')" class="card-hover rounded-2xl p-6 text-center cursor-pointer border border-blue-100 bg-white">
+          <div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="${icon}" class="w-7 h-7 text-blue-600"></i></div>
+          <p class="font-bold text-blue-900">${escapeHtml(g.title)}</p>
+        </button>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function showGrade(gradeId) {
+      currentGrade = gradeId;
+      const g = siteGrades.find(r => r.grade === gradeId);
+      const name = g ? g.title : gradeId;
+      document.getElementById('grades-view').classList.add('hidden');
+      document.getElementById('grade-detail').classList.remove('hidden');
+      document.getElementById('detail-breadcrumb').textContent = name;
+      document.getElementById('detail-section-breadcrumb').textContent = getSectionName(currentSectionId);
+      document.getElementById('detail-title').textContent = name + ' – ' + getSectionName(currentSectionId);
+      window.scrollTo(0, 0);
+    }
+    function showGrades() {
+      document.getElementById('grade-detail').classList.add('hidden');
+      document.getElementById('grades-view').classList.remove('hidden');
+      renderGradesGrid();
+    }
+
+    function openContent(type) {
+      const ws = document.getElementById('content-workspace');
+      ws.classList.remove('hidden');
+      document.querySelector('[data-template-id="workspace-title"]').textContent = type;
+      const matches = contentRecords.filter(i => i.grade === currentGrade && i.section === currentSectionId);
+      const cardsContainer = document.getElementById('workspace-content-cards');
+      const typeMatches = matches.filter(i => {
+        if (type === 'الدروس') return i.content_type === 'درس';
+        if (type === 'ملخصات') return i.content_type === 'ملخص';
+        if (type === 'فيديوهات تعليمية') return i.content_type === 'فيديو';
+        if (type === 'روابط مفيدة') return i.content_type === 'رابط خارجي';
+        if (type === 'الاختبارات') return i.content_type === 'اختبار';
+        if (type === 'العروض التقديمية') return i.content_type === 'عرض';
+        if (type === 'أنشطة وتدريبات') return i.content_type === 'نشاط';
+        return false;
+      });
+      if (typeMatches.length) {
+        document.querySelector('[data-template-id="workspace-empty"]').textContent = '';
+        cardsContainer.innerHTML = typeMatches.map(i => `<div class="rounded-2xl border bg-white p-4 shadow-sm"><strong class="text-blue-950">${escapeHtml(i.title)}</strong><p class="text-sm text-slate-500 mt-1">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 text-sm text-blue-600 hover:underline">فتح الرابط ←</a>` : ''}</div>`).join('');
+      } else {
+        document.querySelector('[data-template-id="workspace-empty"]').textContent = 'مساحة فارغة جاهزة لإضافة المحتوى.';
+        cardsContainer.innerHTML = '';
+      }
+      ws.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ============ PROFESSIONAL / GENERIC SECTION ============
+    function renderProfessionalContent() {
+      // Find professional section id
+      const proSec = siteSections.find(s => s.title.includes('التنمية المهنية'));
+      const sectionId = proSec ? proSec.grade : 'professional';
+      document.getElementById('professional-page-title').textContent = proSec ? proSec.title : 'التنمية المهنية';
+      const items = contentRecords.filter(i => i.section === sectionId);
+      const container = document.getElementById('professional-content-list');
+      const empty = document.getElementById('professional-empty');
+      if (items.length) {
+        empty.classList.add('hidden');
+        container.innerHTML = items.map(i => `<div class="card-hover rounded-2xl border border-cyan-100 bg-white p-6 shadow-sm"><div class="w-12 h-12 mx-auto bg-cyan-100 rounded-xl flex items-center justify-center mb-3"><i data-lucide="file-text" class="w-6 h-6 text-cyan-600"></i></div><h3 class="font-bold text-blue-950 text-center">${escapeHtml(i.title)}</h3><p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}</div>`).join('');
+        lucide.createIcons();
+      } else {
+        empty.classList.remove('hidden');
+        container.innerHTML = '';
+      }
+    }
+
+    function renderGenericSection() {
+      const items = contentRecords.filter(i => i.section === currentSectionId);
+      const container = document.getElementById('generic-content-list');
+      const empty = document.getElementById('generic-empty');
+      if (items.length) {
+        empty.classList.add('hidden');
+        container.innerHTML = items.map(i => `<div class="card-hover rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h3 class="font-bold text-blue-950 text-center">${escapeHtml(i.title)}</h3><p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}</div>`).join('');
+      } else {
+        empty.classList.remove('hidden');
+        container.innerHTML = '';
+      }
+    }
+
+    // ============ SMART ASSISTANT ============
+    let assistantHistory = [];
+    let assistantMode = 'smart';
+    function setAssistantMode(mode) { assistantMode = mode; const labels={site:'📚 الموقع فقط',web:'🌐 الإنترنت فقط',smart:'🤖 الموقع ثم الإنترنت'}; document.getElementById('assistant-mode-status').textContent=labels[mode]; }
+    const assistantSuggestions = ['🔍 ابحث لي عن درس','📚 أريد ملخصًا','🎥 ابحث عن فيديو تعليمي','🧮 ساعدني في فهم مسألة','📖 ما محتوى صفي الدراسي؟','⭐ اقترح عليّ درسًا أبدأ به'];
+    function initAssistantChat() {
+      const box = document.getElementById('assistant-messages'); if (!box) return;
+      if (!assistantHistory.length) { assistantHistory = [{role:'assistant', text:'مرحبًا بك 👋\nأنا المساعد الذكي لرياضيات بلاد الشهوم.\nاكتب سؤالك وسأساعدك في الوصول إلى محتويات الموقع وحل المسائل الرياضية.'}]; renderAssistantChat(); }
+      document.getElementById('assistant-suggestions').innerHTML = assistantSuggestions.map(s => `<button type="button" onclick="useAssistantSuggestion('${escapeHtml(s)}')" class="rounded-full border border-blue-100 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-800 hover:bg-blue-100">${s}</button>`).join('');
+      lucide.createIcons();
+    }
+    function renderAssistantChat() { document.getElementById('assistant-messages').innerHTML = assistantHistory.map(m => `<div class="flex ${m.role === 'user' ? 'justify-start' : 'justify-end'}"><div class="max-w-[88%] rounded-2xl px-4 py-3 ${m.role === 'user' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-800'}">${escapeHtml(m.text).replace(/\n/g,'<br>')}</div></div>`).join(''); const b=document.getElementById('assistant-messages'); b.scrollTop=b.scrollHeight; }
+    function useAssistantSuggestion(text) { document.getElementById('assistant-input').value = text.replace(/^[^ ]+ /,''); document.getElementById('assistant-input').focus(); }
+    function startNewAssistantChat() { assistantHistory=[]; initAssistantChat(); }
+    function attachAssistantText() { const input=document.getElementById('assistant-input'); input.value += (input.value ? '\n' : '') + 'معلومة إضافية: '; input.focus(); }
+    function searchSiteContent(query) {
+      const q = query.toLowerCase().replace(/[أإآ]/g,'ا');
+      const words = q.split(/\s+/).filter(w=>w.length>2); const type = q.includes('فيديو')?'فيديو':q.includes('ملخص')?'ملخص':q.includes('درس')?'درس':null;
+      return contentRecords.map(item => { const hay = [item.title,item.description,item.content_type,item.grade,getSectionName(item.section),item.link].join(' ').toLowerCase().replace(/[أإآ]/g,'ا'); let score=words.reduce((n,w)=>n+(hay.includes(w)?2:0),0); if(type && item.content_type===type) score+=3; return {item,score}; }).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+    }
+    // All model and web credentials stay on the server. The browser only calls this safe route.
+    async function searchWeb(query) {
+      try {
+        const response = await fetch('/api/assistant/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ query, mode:'web', history: assistantHistory.slice(-10), siteContext: contentRecords.slice(0,80).map(item => ({title:item.title,description:item.description,section:getSectionName(item.section),grade:item.grade,content_type:item.content_type,link:item.link})) }) });
+        if (!response.ok) return { sources: [], unavailable: true };
+        const data = await response.json();
+        return { sources: Array.isArray(data.sources) ? data.sources.filter(s => s && s.title && s.url && /^https:\/\//.test(s.url)) : [], unavailable: false };
+      } catch (_) { return { sources: [], unavailable: true }; }
+    }
+    async function requestAssistantAnswer(query) {
+      let response;
+      try {
+        response = await fetch('/api/assistant/chat', { method:'POST', headers:{'Content-Type':'application/json', 'Accept':'application/json'}, body:JSON.stringify({
+          query, mode: assistantMode, history: assistantHistory.slice(-10),
+          siteContext: contentRecords.slice(0,80).map(item => ({title:item.title,description:item.description,section:getSectionName(item.section),grade:item.grade,content_type:item.content_type,link:item.link}))
+        }) });
+      } catch (_) {
+        throw new Error('assistant_unavailable');
+      }
+      if (!response.ok) throw new Error('assistant_unavailable');
+      let data;
+      try { data = await response.json(); } catch (_) { throw new Error('assistant_invalid_response'); }
+      if (!data || typeof data.answer !== 'string' || !data.answer.trim()) throw new Error('assistant_invalid_response');
+      return { text: data.answer.trim(), sources: Array.isArray(data.sources) ? data.sources.filter(s => s && s.title && s.url && /^https:\/\//.test(s.url)) : [] };
+    }
+    async function smartSearch(query) {
+      const explicitWeb = /ابحث في الإنترنت|من الإنترنت|مصادر موثوقة/.test(query);
+      const siteResults = explicitWeb ? [] : searchSiteContent(query);
+      const web = (assistantMode !== 'site' && (assistantMode === 'web' || explicitWeb || siteResults.length < 2)) ? await searchWeb(query) : {sources:[],unavailable:false};
+      return {siteResults, web, explicitWeb};
+    }
+    function assistantReply(query, results) { if (!results.length) return 'لم أجد محتوى مطابقًا حاليًا في الموقع. جرّب كلمات مثل: الكسور، النسبة، المعادلات، أو اذكر الصف ونوع المحتوى المطلوب.'; const intro = query.includes('أتعلم') || query.includes('تعلم') ? 'أنصحك بخطة بسيطة: ابدأ بالدرس الأقرب لموضوعك، ثم راجع الملخص، وبعدها جرّب الفيديو أو النشاط إن وُجد. ' : 'وجدت لك مصادر مناسبة داخل الموقع. '; return intro + `أقوى نتيجة هي «${results[0].item.title}». يمكنك اختيار أحد المصادر أدناه لفتح المحتوى مباشرة.`; }
+    function renderAssistantSources(results) { return results.length ? '<div class="mt-3 border-t border-slate-200 pt-3"><strong>المصادر والمحتويات المرتبطة</strong><div class="mt-3 grid gap-3">' + results.map(({item,score})=>`<div class="rounded-xl border border-slate-200 bg-white p-3"><div class="font-bold text-blue-950">${escapeHtml(item.content_type||'محتوى')}: ${escapeHtml(item.title)}</div><div class="mt-1 text-sm text-slate-500">${escapeHtml(item.grade||'عام')} | ${escapeHtml(getSectionName(item.section))}</div><div class="mt-1 text-sm text-slate-600">${escapeHtml(item.description||'')} · ارتباط ${Math.min(99,score*15)}%</div>${item.link?`<a class="mt-2 inline-block font-bold text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" href="${escapeHtml(item.link)}">فتح المصدر ←</a>`:''}</div>`).join('')+'</div></div>' : ''; }
+    document.getElementById('assistant-form').addEventListener('submit', async function(e){ e.preventDefault(); const input=document.getElementById('assistant-input'), query=input.value.trim(); if(!query)return; assistantHistory.push({role:'user',text:query}); renderAssistantChat(); input.value=''; const messages=document.getElementById('assistant-messages'); messages.insertAdjacentHTML('beforeend','<div id="assistant-thinking" class="text-right text-sm text-slate-400 animate-pulse">المساعد يفكر... أبحث في محتويات الموقع...</div>'); try { const answer=await requestAssistantAnswer(query); document.getElementById('assistant-thinking')?.remove(); assistantHistory.push({role:'assistant',text:answer.text || 'لم تصل إجابة من خدمة المساعد.'}); renderAssistantChat(); const last=document.getElementById('assistant-messages').lastElementChild?.querySelector('div'); const siteResults=searchSiteContent(query); if(last && siteResults.length) last.insertAdjacentHTML('beforeend',renderAssistantSources(siteResults)); if(last && answer.sources.length) last.insertAdjacentHTML('beforeend','<div class="mt-3 border-t border-slate-200 pt-3"><strong>🌐 مصادر خارجية موثوقة</strong><div class="mt-3 grid gap-3">'+answer.sources.map(s=>'<div class="rounded-xl border border-slate-200 bg-white p-3"><div class="font-bold text-blue-950">'+escapeHtml(s.title)+'</div><div class="mt-1 text-sm text-slate-600">'+escapeHtml(s.description||s.domain||'مصدر تعليمي موثوق')+'</div><a class="mt-2 inline-block font-bold text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" href="'+escapeHtml(s.url)+'">فتح المصدر ←</a></div>').join('')+'</div></div>'); } catch (error) { document.getElementById('assistant-thinking')?.remove(); const unavailable = error && error.message === 'assistant_unavailable'; assistantHistory.push({role:'assistant',text: unavailable ? 'خدمة الذكاء الاصطناعي غير متاحة حاليًا. تحتاج هذه البيئة إلى ربط المساعد بخادم خارجي يوفّر المسار /api/assistant/chat.' : 'تعذر قراءة استجابة صحيحة من خدمة الذكاء الاصطناعي. تأكد من أن المسار /api/assistant/chat يعيد JSON يحتوي على الحقل answer.'}); renderAssistantChat(); } });
+
+    // ============ ADMIN ============
+    function openAdminModal() {
+      const m = document.getElementById('admin-modal');
+      m.classList.remove('hidden'); m.classList.add('flex');
+    }
+    function closeAdminModal() {
+      const m = document.getElementById('admin-modal');
+      m.classList.add('hidden'); m.classList.remove('flex');
+    }
+    function activateAdminMode() {
+      closeAdminModal();
+      document.getElementById('admin-tools').classList.remove('hidden');
+      document.getElementById('admin-tools').scrollIntoView({ behavior: 'smooth' });
+    }
+    function logoutAdmin() {
+      document.getElementById('admin-tools').classList.add('hidden');
+      closeAdminWorkspace();
+      navigateTo('home');
+      const toast = document.getElementById('logout-toast');
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 3500);
+    }
+
+    let currentAdminMode = 'edit';
+    let editingRecord = null;
+
+    function openAdminWorkspace(mode) {
+      currentAdminMode = mode;
+      const ws = document.getElementById('admin-workspace');
+      ws.classList.remove('hidden');
+      document.getElementById('admin-editor').classList.toggle('hidden', mode !== 'add' && mode !== 'edit');
+      document.getElementById('content-list-panel').classList.toggle('hidden', mode !== 'edit' && mode !== 'delete');
+      document.getElementById('management-tabs').classList.toggle('hidden', mode !== 'manage');
+      if (mode === 'add') {
+        editingRecord = null;
+        document.getElementById('content-form').reset();
+        document.getElementById('editor-heading').textContent = 'إضافة المحتوى';
+        populateSectionSelect();
+        handleSectionChange();
+      }
+      if (mode === 'edit' || mode === 'delete') renderManagedContent(mode);
+      if (mode === 'manage') showManagementTab('sections');
+      ws.scrollIntoView({ behavior: 'smooth' });
+    }
+    function closeAdminWorkspace() { document.getElementById('admin-workspace').classList.add('hidden'); }
+
+    function populateSectionSelect() {
+      const sel = document.getElementById('admin-content-section');
+      sel.innerHTML = siteSections.map(s => `<option value="${escapeHtml(s.grade)}">${escapeHtml(s.title)}</option>`).join('');
+    }
+    function populateGradeSelect() {
+      const sel = document.getElementById('admin-content-grade');
+      sel.innerHTML = siteGrades.map(g => `<option value="${escapeHtml(g.grade)}">${escapeHtml(g.title)}</option>`).join('');
+    }
+
+    const professionalTypes = ['ورقة عمل', 'ملف', 'فيديو', 'رابط'];
+    const generalTypes = ['درس', 'ملخص', 'فيديو', 'رابط خارجي', 'اختبار', 'عرض', 'نشاط'];
+
+    function handleSectionChange() {
+      const sectionId = document.getElementById('admin-content-section').value;
+      const sec = siteSections.find(s => s.grade === sectionId);
+      const isPro = sec && sec.title.includes('التنمية المهنية');
+      const gradeLabel = document.getElementById('grade-label');
+      const typeSelect = document.getElementById('admin-content-type');
+      if (isPro) {
+        gradeLabel.classList.add('hidden');
+        typeSelect.innerHTML = professionalTypes.map(t => `<option>${t}</option>`).join('');
+      } else {
+        gradeLabel.classList.remove('hidden');
+        populateGradeSelect();
+        typeSelect.innerHTML = generalTypes.map(t => `<option>${t}</option>`).join('');
+      }
+    }
+
+    function renderManagedContent(mode) {
+      const list = document.getElementById('managed-content-list');
+      if (!list) return;
+      list.innerHTML = contentRecords.length ? contentRecords.map((item, i) => `<div class="rounded-2xl border bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-4"><div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || '')}</p></div>${mode === 'edit' ? `<button type="button" onclick="editItem('${item.__backendId}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">تعديل</button>` : `<button type="button" onclick="requestDelete('${item.__backendId}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button>`}</div></div>`).join('') : '<p class="text-slate-500 p-4">لا توجد محتويات.</p>';
+    }
+
+    function editItem(backendId) {
+      editingRecord = contentRecords.find(r => r.__backendId === backendId);
+      if (!editingRecord) return;
+      const item = editingRecord;
+      populateSectionSelect();
+      document.getElementById('admin-content-title').value = item.title || '';
+      document.getElementById('admin-content-description').value = item.description || '';
+      document.getElementById('admin-content-section').value = item.section || '';
+      handleSectionChange();
+      document.getElementById('admin-content-grade').value = item.grade || '';
+      document.getElementById('admin-content-type').value = item.content_type || '';
+      document.getElementById('admin-content-link').value = item.link || '';
+      document.getElementById('admin-content-image').value = item.image_url || '';
+      document.getElementById('editor-heading').textContent = 'تعديل المحتوى';
+      document.getElementById('admin-editor').classList.remove('hidden');
+    }
+
+    function requestDelete(backendId) {
+      const list = document.getElementById('managed-content-list');
+      const idx = contentRecords.findIndex(r => r.__backendId === backendId);
+      const card = list.children[idx];
+      if (!card || card.querySelector('.confirm-delete')) return;
+      card.insertAdjacentHTML('beforeend', `<div class="confirm-delete mt-3 rounded-xl bg-rose-50 p-3"><p class="text-sm font-semibold text-rose-700">تأكيد الحذف؟</p><div class="mt-2 flex gap-2"><button type="button" onclick="confirmDelete('${backendId}')" class="rounded-lg bg-rose-600 px-3 py-1 text-sm font-bold text-white">حذف</button><button type="button" onclick="renderManagedContent('delete')" class="rounded-lg border px-3 py-1 text-sm">إلغاء</button></div></div>`);
+    }
+
+    async function confirmDelete(backendId) {
+      const record = allRecords.find(r => r.__backendId === backendId);
+      if (!record) return;
+      const r = await window.dataSdk.delete(record);
+      if (!r.isOk) { showStatus('تعذر الحذف', false); return; }
+      showStatus('تم الحذف بنجاح');
+    }
+
+    function showStatus(msg, ok = true) {
+      const el = document.getElementById('save-status');
+      el.textContent = msg;
+      el.className = `md:col-span-2 rounded-xl px-4 py-3 font-semibold ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+      el.classList.remove('hidden');
+    }
+
+    document.getElementById('content-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('save-content-button');
+      btn.disabled = true;
+      const sectionId = document.getElementById('admin-content-section').value;
+      const sec = siteSections.find(s => s.grade === sectionId);
+      const isPro = sec && sec.title.includes('التنمية المهنية');
+      const record = {
+        title: document.getElementById('admin-content-title').value,
+        description: document.getElementById('admin-content-description').value,
+        section: sectionId,
+        grade: isPro ? '' : document.getElementById('admin-content-grade').value,
+        content_type: document.getElementById('admin-content-type').value,
+        link: document.getElementById('admin-content-link').value,
+        image_url: document.getElementById('admin-content-image').value,
+        created_at: new Date().toISOString()
+      };
+      let result;
+      if (editingRecord) {
+        result = await window.dataSdk.update({ ...editingRecord, ...record });
+      } else {
+        result = await window.dataSdk.create(record);
+      }
+      btn.disabled = false;
+      if (!result.isOk) { showStatus('تعذر الحفظ', false); return; }
+      showStatus(editingRecord ? 'تم التعديل' : 'تم الحفظ');
+      editingRecord = null;
+      document.getElementById('content-form').reset();
+      handleSectionChange();
     });
 
-    function scrollToBottom() {
-      messages.scrollTop = messages.scrollHeight;
+    // ============ MANAGEMENT TABS (Sections & Grades) ============
+    function showManagementTab(tab) {
+      const panel = document.getElementById('management-tab-content');
+      const list = tab === 'sections' ? siteSections : siteGrades;
+      const title = tab === 'sections' ? 'إدارة الأقسام' : 'إدارة الصفوف';
+      const kind = tab === 'sections' ? 'section' : 'grade';
+      panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="text-xl font-bold text-blue-950">${title}</h3><button type="button" onclick="addStructureItem('${kind}')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة ${tab === 'sections' ? 'قسم' : 'صف'}</button></div><p class="mt-2 text-sm text-slate-500">عدّل أو احذف العنصر عند الحاجة.</p><div class="mt-5 grid gap-3">${list.map((item) => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4"><strong class="text-blue-950">${escapeHtml(item.title)}</strong><div class="flex flex-wrap gap-2"><button type="button" onclick="editStructureItem('${kind}','${item.__backendId}')" class="rounded-lg bg-emerald-600 px-3 py-1 font-bold text-white">تعديل</button><button type="button" onclick="deleteStructureItem('${kind}','${item.__backendId}')" class="rounded-lg bg-rose-600 px-3 py-1 font-bold text-white">حذف</button></div></div>`).join('')}</div>`;
     }
 
-    function addMessage(text, sender, extraClass = "") {
-      const message = document.createElement("div");
-
-      message.className = `message ${sender} ${extraClass}`;
-      message.textContent = text;
-
-      messages.appendChild(message);
-      scrollToBottom();
-
-      return message;
-    }
-
-    function showTyping() {
-      removeTyping();
-
-      const typingMessage = document.createElement("div");
-
-      typingMessage.className = "message assistant";
-      typingMessage.id = "typingMessage";
-
-      typingMessage.innerHTML = `
-        <div class="typing">
-          <span>جاري التفكير</span>
-          <span class="dots">
-            <span></span>
-            <span></span>
-            <span></span>
-          </span>
-        </div>
-      `;
-
-      messages.appendChild(typingMessage);
-      scrollToBottom();
-    }
-
-    function removeTyping() {
-      const typingMessage = document.getElementById("typingMessage");
-
-      if (typingMessage) {
-        typingMessage.remove();
-      }
-    }
-
-    function startNewChat() {
-      conversationHistory = [];
-      removeTyping();
-
-      messages.innerHTML = `
-        <div class="welcome">
-          <strong>مرحبًا بك 👋</strong>
-          <br>
-          أنا مساعد شحوم للرياضيات.
-          <br>
-          اختر صفك الدراسي، ثم اكتب سؤالك أو المسألة الرياضية.
-        </div>
-      `;
-
-      input.value = "";
-      input.focus();
-    }
-
-    async function sendMessage() {
-      const text = input.value.trim();
-      const grade = gradeSelect.value;
-
-      if (!grade) {
-        alert("يرجى اختيار الصف الدراسي أولًا.");
-        gradeSelect.focus();
-        return;
-      }
-
-      if (!text) {
-        input.focus();
-        return;
-      }
-
-      const welcome = document.querySelector(".welcome");
-
-      if (welcome) {
-        welcome.remove();
-      }
-
-      addMessage(text, "user");
-
-      conversationHistory.push({
-        role: "user",
-        text: text
+    function addStructureItem(kind) {
+      const panel = document.getElementById('management-tab-content');
+      const title = kind === 'section' ? 'قسم' : 'صف';
+      panel.insertAdjacentHTML('afterbegin', `<form id="structure-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-blue-50 p-4"><label class="font-semibold text-blue-950" for="structure-name">اسم ${title}<input id="structure-name" required class="mt-1 w-full rounded-xl border p-2" type="text"></label><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" type="submit">حفظ</button><button class="rounded-xl border px-4 py-2" type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')">إلغاء</button></form>`);
+      document.getElementById('structure-form').addEventListener('submit', async function(ev) {
+        ev.preventDefault();
+        const name = document.getElementById('structure-name').value.trim();
+        if (!name) return;
+        const id = kind + '_' + Date.now();
+        const list = kind === 'section' ? siteSections : siteGrades;
+        const sortOrder = list.length;
+        const record = {
+          title: name,
+          description: String(sortOrder),
+          section: kind === 'section' ? '__section__' : '__grade__',
+          grade: id,
+          content_type: kind === 'section' ? sectionIcons[sortOrder % sectionIcons.length] : gradeIcons[sortOrder % gradeIcons.length],
+          link: kind === 'section' ? sectionColors[sortOrder % sectionColors.length] : '',
+          image_url: '',
+          created_at: new Date().toISOString()
+        };
+        const r = await window.dataSdk.create(record);
+        if (!r.isOk) { showStatus('تعذر الحفظ', false); return; }
+        showManagementTab(kind === 'section' ? 'sections' : 'grades');
       });
+    }
 
-      input.value = "";
-      input.disabled = true;
-      button.disabled = true;
-      newChatButton.disabled = true;
-      gradeSelect.disabled = true;
+    function editStructureItem(kind, backendId) {
+      const item = allRecords.find(r => r.__backendId === backendId);
+      if (!item) return;
+      const panel = document.getElementById('management-tab-content');
+      const title = kind === 'section' ? 'قسم' : 'صف';
+      panel.insertAdjacentHTML('afterbegin', `<form id="structure-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-blue-50 p-4"><label class="font-semibold text-blue-950" for="structure-name">اسم ${title}<input id="structure-name" required value="${escapeHtml(item.title)}" class="mt-1 w-full rounded-xl border p-2" type="text"></label><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" type="submit">حفظ</button><button class="rounded-xl border px-4 py-2" type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')">إلغاء</button></form>`);
+      document.getElementById('structure-form').addEventListener('submit', async function(ev) {
+        ev.preventDefault();
+        const name = document.getElementById('structure-name').value.trim();
+        if (!name) return;
+        const r = await window.dataSdk.update({ ...item, title: name });
+        if (!r.isOk) { showStatus('تعذر الحفظ', false); return; }
+        showManagementTab(kind === 'section' ? 'sections' : 'grades');
+      });
+    }
 
-      button.textContent = "جاري التفكير...";
+    function deleteStructureItem(kind, backendId) {
+      const panel = document.getElementById('management-tab-content');
+      const cards = panel.querySelectorAll('.grid.gap-3 > div');
+      const list = kind === 'section' ? siteSections : siteGrades;
+      const idx = list.findIndex(r => r.__backendId === backendId);
+      const card = cards[idx];
+      if (!card || card.querySelector('.confirm-structure')) return;
+      card.insertAdjacentHTML('beforeend', `<div class="confirm-structure mt-2 rounded-lg bg-rose-50 p-2 text-rose-700">تأكيد الحذف؟ المحتوى المرتبط لن يُحذف. <button type="button" onclick="performStructureDelete('${kind}','${backendId}')" class="font-bold underline">نعم</button> <button type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')" class="underline">إلغاء</button></div>`);
+    }
 
-      showTyping();
+    async function performStructureDelete(kind, backendId) {
+      const record = allRecords.find(r => r.__backendId === backendId);
+      if (!record) return;
+      const r = await window.dataSdk.delete(record);
+      if (!r.isOk) { showStatus('تعذر الحذف', false); return; }
+      showManagementTab(kind === 'section' ? 'sections' : 'grades');
+    }
 
+    // ============ DATA SDK INIT ============
+    let dataReady = false;
+
+    // Paint the seven local defaults before any SDK callback; an empty callback must never blank the homepage.
+    renderHomeSections();
+    renderNavLinks();
+
+    // The SDK callback is defined before initialization and is the only state updater.
+    function handleDataChanged(data) {
       try {
-        const response = await fetch("/api/assistant/chat", {
-          method: "POST",
-
-          headers: {
-            "Content-Type": "application/json"
-          },
-
-          body: JSON.stringify({
-            message: text,
-            grade: grade,
-            siteContent: "",
-            history: conversationHistory.slice(-10)
-          })
+        categorizeRecords(Array.isArray(data) ? data : []);
+        dataReady = true;
+        renderHomeSections();
+        renderNavLinks();
+        migrateSectionsIfMissing(Array.isArray(data) ? data : allRecords).catch(() => {
+          sectionMigrationStarted = false;
         });
-
-        let data;
-
-        try {
-          data = await response.json();
-        } catch (jsonError) {
-          throw new Error(
-            "تعذر قراءة استجابة الخادم. تأكد من أن ملف API يعمل بشكل صحيح."
-          );
+        if (document.getElementById('page-professional').classList.contains('active')) renderProfessionalContent();
+        if (document.getElementById('page-generic-section').classList.contains('active')) renderGenericSection();
+        if (document.getElementById('grades-view') && !document.getElementById('grades-view').classList.contains('hidden')) renderGradesGrid();
+        if (!document.getElementById('management-tabs').classList.contains('hidden')) {
+          const activeTab = siteSections.length ? 'sections' : 'grades';
+          if (!document.getElementById('structure-form')) showManagementTab(activeTab);
         }
-
-        if (!response.ok) {
-          throw new Error(
-            data.error ||
-            data.message ||
-            `حدث خطأ في الخادم (${response.status})`
-          );
-        }
-
-        const answer =
-          data.reply ||
-          data.answer ||
-          data.message ||
-          "لم يتم استلام إجابة من المساعد.";
-
-        removeTyping();
-        addMessage(answer, "assistant");
-
-        conversationHistory.push({
-          role: "assistant",
-          text: answer
-        });
-
+        if (!document.getElementById('content-list-panel').classList.contains('hidden')) renderManagedContent(currentAdminMode);
       } catch (error) {
-        removeTyping();
-
-        console.error("Assistant connection error:", error);
-
-        addMessage(
-          "تعذر الاتصال بالمساعد حاليًا: " + error.message,
-          "assistant",
-          "error-message"
-        );
-
-      } finally {
-        removeTyping();
-
-        input.disabled = false;
-        button.disabled = false;
-        newChatButton.disabled = false;
-        gradeSelect.disabled = false;
-
-        button.textContent = "إرسال";
-        input.focus();
+        dataReady = true;
+        categorizeRecords([]);
+        renderHomeSections();
+        renderNavLinks();
       }
     }
-  </script>
 
-</body>
+    const dataHandler = { onDataChanged: handleDataChanged };
+
+    (async function initDataSource() {
+      if (!window.dataSdk) {
+        dataReady = true;
+        renderHomeSections();
+        return;
+      }
+      const result = await window.dataSdk.init(dataHandler);
+      if (!result || !result.isOk) {
+        dataReady = true;
+        categorizeRecords([]);
+        renderHomeSections();
+        renderNavLinks();
+      }
+    })();
+
+    // ============ UTILITY ============
+    function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
+  </script>
+ </body>
 </html>
