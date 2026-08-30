@@ -1,3 +1,343 @@
+
+فهمت عليك. لكن بعد مراجعة الكود الذي أرسلته سطرًا بسطر، أؤكد أن هذا الكود ليس كود تسجيل الدخول، حتى لو كان موجودًا عندك داخل ملف اسمه login.js.
+
+الدليل أنه يحتوي على:
+
+admin_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0
+
+وهذا يعني حذف الجلسة وتسجيل الخروج، وليس التحقق من كلمة المرور.
+
+إذن الأفضل الآن أن نصحح login.js بدل أن نترك النظام يعمل بطريقة غير صحيحة.
+استبدل محتوى login.js بالكامل بهذا الكود
+
+افتح:
+
+api/admin/login.js
+
+اضغط ✏️، احذف كل الكود الموجود، ثم الصق هذا الكود كاملًا:
+
+import crypto from "crypto";
+
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
+function setCors(res) {
+  const origin =
+    process.env.FRONTEND_ORIGIN ||
+    "https://math-shuhum-assistant-vercel.vercel.app";
+
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type"
+  );
+}
+
+function createSessionToken() {
+  const payload = {
+    role: "admin",
+    exp: Date.now() + 8 * 60 * 60 * 1000,
+  };
+
+  const raw = Buffer.from(
+    JSON.stringify(payload)
+  ).toString("base64url");
+
+  const signature = crypto
+    .createHmac(
+      "sha256",
+      process.env.ADMIN_PASSWORD
+    )
+    .update(raw)
+    .digest("base64url");
+
+  return `${raw}.${signature}`;
+}
+
+export default async function handler(req, res) {
+  setCors(res);
+
+  if (req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  if (req.method !== "POST") {
+    return res.status(405).json({
+      success: false,
+      error: "Method not allowed",
+    });
+  }
+
+  try {
+    const adminPassword =
+      process.env.ADMIN_PASSWORD;
+
+    if (!adminPassword) {
+      console.error(
+        "ADMIN_PASSWORD is not configured."
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          "لم يتم إعداد كلمة مرور الإدارة في Vercel.",
+      });
+    }
+
+    const body = req.body || {};
+
+    const password =
+      typeof body.password === "string"
+        ? body.password
+        : "";
+
+    if (!password) {
+      return res.status(400).json({
+        success: false,
+        error: "يرجى إدخال كلمة المرور.",
+      });
+    }
+
+    const passwordBuffer = Buffer.from(password);
+    const adminPasswordBuffer =
+      Buffer.from(adminPassword);
+
+    let passwordMatches = false;
+
+    if (
+      passwordBuffer.length ===
+      adminPasswordBuffer.length
+    ) {
+      passwordMatches =
+        crypto.timingSafeEqual(
+          passwordBuffer,
+          adminPasswordBuffer
+        );
+    }
+
+    if (!passwordMatches) {
+      return res.status(401).json({
+        success: false,
+        error: "كلمة المرور غير صحيحة.",
+      });
+    }
+
+    const token = createSessionToken();
+
+    res.setHeader(
+      "Set-Cookie",
+      [
+        `admin_session=${encodeURIComponent(token)}`,
+        "Path=/",
+        "HttpOnly",
+        "Secure",
+        "SameSite=Lax",
+        "Max-Age=28800",
+      ].join("; ")
+    );
+
+    return res.status(200).json({
+      success: true,
+      authenticated: true,
+      message: "تم تسجيل الدخول بنجاح.",
+    });
+  } catch (error) {
+    console.error(
+      "Admin login error:",
+      error
+    );
+
+    return res.status(500).json({
+      success: false,
+      error:
+        "حدث خطأ أثناء تسجيل الدخول.",
+    });
+  }
+}
+
+ثم احفظه
+
+اضغط:
+
+Commit changes...
+
+ثم:
+
+Commit directly to the main branch
+
+ثم:
+
+Commit changes
+مهم جدًا
+
+لا نحتاج إلى تغيير:
+
+session.js
+logout.js
+
+حاليًا، لأن login.js الذي أعطيتك إياه أعلاه صُمم ليكون متوافقًا مع session.js الذي أنشأناه:
+
+ADMIN_PASSWORD
+      ↓
+التحقق من كلمة المرور
+      ↓
+إنشاء admin_session
+      ↓
+session.js يتحقق من الجلسة
+      ↓
+الدخول إلى الإدارة
+
+وlogout.js يحذف الجلسة عند تسجيل الخروج.
+بعد الـ Commit
+
+لا تختبر الموقع مباشرة بعد الحفظ.
+
+سيُنشئ GitHub Commit جديدًا، وVercel سيقوم بعمل Deployment جديد تلقائيًا.
+
+عندما يصبح Deployment:
+
+Ready
+
+أرسل لي صورة له.
+
+بعدها سننتقل إلى الخطوة الأهم: ربط واجهة «دخول الإدارة» الموجودة في الموقع بـ login.js، ثم نختبر كلمة المرور فعليًا.
+
+
+ممتاز جدًا ✅ الصورة تؤكد أن آخر Deployment نجح بالكامل:
+
+    Status: Ready Latest ✅
+
+    Environment: Production / Current ✅
+
+    الـ Commit الأخير هو 962d015 ✅
+
+    لا توجد مشكلة في عملية النشر.
+
+إذن لا نلمس ملفات API الآن.
+الخطوة التالية: ربط زر «دخول الإدارة»
+
+الآن نحتاج إلى تعديل index.html حتى يصبح زر:
+
+    🔒 دخول الإدارة
+
+مرتبطًا فعليًا بـ:
+
+index.html
+     ↓
+login.js
+     ↓
+ADMIN_PASSWORD
+     ↓
+admin_session
+     ↓
+session.js
+     ↓
+لوحة الإدارة
+
+قبل أن أعطيك الكود
+
+أريد أن نتجنب تكرار المشكلة السابقة، لذلك سنعدل index.html مرة واحدة فقط وبطريقة تحافظ على تصميم الموقع الحالي.
+
+افتح GitHub:
+
+math-shuhum-assistant
+        ↓
+index.html
+
+ثم اضغط Raw وانسخ الكود الكامل لـ index.html هنا.
+
+لا تعدّل الملف الآن ولا تعمل Commit.
+
+بمجرد أن ترسل لي الكود، سأعيده لك كودًا كاملًا جاهزًا للاستبدال مرة واحدة، وسأضيف فيه:
+
+    زر دخول الإدارة.
+
+    نافذة دخول أنيقة.
+
+    حقل كلمة المرور.
+
+    الاتصال بـ /api/admin/login.
+
+    حفظ جلسة الإدارة بأمان عبر Cookie.
+
+    التحقق من الجلسة عبر /api/admin/session.
+
+    زر تسجيل الخروج عبر /api/admin/logout.
+
+    رسائل خطأ واضحة.
+
+    الحفاظ على التصميم الحالي للموقع كما هو.
+
+أرسل الآن كود index.html كاملًا، ولا نحتاج إلى أي تعديل آخر في Vercel.
+
+تم لصق markdown(1).md
+الملف
+
+نعم، وصلني ملف index.html الكامل، وراجعته. الملف الحالي يحتوي أصلًا على نافذة «دخول الإدارة»، لكن المشكلة أن زر الدخول كان يستدعي activateAdminMode() ويفتح أدوات الإدارة من دون التحقق من كلمة المرور.
+
+قمت بتجهيز نسخة كاملة من index.html مع نظام كلمة المرور وربطه بالمسارات:
+
+    /api/admin/login
+
+    /api/admin/session
+
+    /api/admin/logout
+
+كما أضفت:
+
+    نافذة دخول احترافية.
+
+    حقل كلمة المرور.
+
+    إظهار/إخفاء كلمة المرور.
+
+    رسالة عند كلمة المرور الخاطئة.
+
+    التحقق من الجلسة.
+
+    إرسال Cookie مع الطلبات.
+
+    تسجيل الخروج الفعلي.
+
+    الإبقاء على بقية موقعك كما هو، بما في ذلك أدوات إدارة المحتوى الموجودة حاليًا.
+
+حمّل الملف الجاهز
+
+الآن ماذا تفعل في GitHub؟
+
+    افتح مستودع:
+    math-shuhum-assistant
+
+    افتح index.html.
+
+    اضغط ✏️ Edit.
+
+    احذف محتوى الملف القديم بالكامل.
+
+    افتح الملف الذي جهزته لك وانسخ كل محتواه.
+
+    الصقه في GitHub.
+
+    اضغط Commit changes.
+
+    انتظر Vercel حتى يظهر:
+    Ready / Production.
+
+بعدها نختبر الموقع.
+
+مهم: لا تغيّر الآن login.js أو session.js أو logout.js. نريد أولًا تجربة هذه النسخة مع الملفات التي أنشأناها. أدوات الإدارة الحالية موجودة بالفعل في index.html، وسنُبقيها مخفية حتى نجاح التحقق من الجلسة.
+
+بعد الـ Commit، أرسل لي صورة صفحة Deployment في Vercel، وسأعطيك خطوة الاختبار التالية مباشرة.
+
+```
 <!doctype html>
 <html lang="ar" dir="rtl">
  <head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260825-05-ee72b97","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script><script src="/_sdk/50d846425a1e5082.telemetry_sdk.js" integrity="sha512-Otbex+ztlVbcEGql0rXGd/3E3ee/hqAntg6DeuUEMG6pIPbXGOSvZbFZVzknAXi1tH/itQ+ijEhOTr2aWj6CXg=="></script>
@@ -226,20 +566,34 @@
     <div id="generic-content-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
     <p id="generic-empty" class="text-center text-slate-500 py-8">لا توجد محتويات حاليًا في هذا القسم.</p>
    </main>
-  </div><!-- Admin Modal -->
-  <div id="admin-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 px-4" role="dialog" aria-modal="true">
+  </div><!-- Admin Login Modal -->
+  <div id="admin-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/70 px-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl">
     <div class="flex items-start justify-between gap-4">
      <div>
-      <p data-template-id="admin-modal-kicker" class="canva-text mb-2 text-sm font-bold text-blue-600"></p>
-      <h2 data-template-id="admin-modal-title-text" class="canva-text text-2xl font-extrabold text-blue-950"></h2>
-     </div><button type="button" onclick="closeAdminModal()" data-template-id="admin-close-icon" class="canva-button rounded-full p-2 text-xl leading-none" aria-label="إغلاق"></button>
+      <p class="mb-2 text-sm font-bold text-blue-600">منطقة محمية</p>
+      <h2 id="admin-modal-title" class="text-2xl font-extrabold text-blue-950">دخول الإدارة</h2>
+     </div>
+     <button type="button" onclick="closeAdminModal()" class="rounded-full p-2 text-xl leading-none text-slate-500 hover:bg-slate-100" aria-label="إغلاق">×</button>
     </div>
-    <p data-template-id="admin-modal-welcome" class="canva-text mt-4 leading-relaxed text-slate-600"></p>
-    <div class="mt-6 flex flex-col gap-3"><button type="button" onclick="activateAdminMode()" data-template-id="admin-login-button" class="canva-button rounded-xl bg-blue-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700"></button> <button type="button" onclick="closeAdminModal()" data-template-id="admin-cancel-button" class="canva-button rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 transition hover:bg-slate-50"></button>
-    </div>
+    <p class="mt-4 leading-relaxed text-slate-600">أدخل كلمة مرور الإدارة للوصول إلى أدوات إدارة المحتوى.</p>
+    <form id="admin-login-form" class="mt-6">
+     <label for="admin-password" class="block text-sm font-bold text-slate-700">كلمة المرور</label>
+     <div class="relative mt-2">
+      <input id="admin-password" type="password" autocomplete="current-password" required
+       class="w-full rounded-xl border border-slate-200 p-3 pl-12 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+       placeholder="أدخل كلمة المرور">
+      <button type="button" onclick="toggleAdminPassword()" class="absolute left-2 top-1/2 -translate-y-1/2 rounded-lg px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100" aria-label="إظهار كلمة المرور">إظهار</button>
+     </div>
+     <div id="admin-login-status" class="mt-3 hidden rounded-xl px-4 py-3 text-sm font-semibold" role="alert"></div>
+     <div class="mt-6 flex flex-col gap-3">
+      <button id="admin-login-submit" type="submit" class="rounded-xl bg-blue-600 px-5 py-3 font-bold text-white shadow-lg shadow-blue-200 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60">دخول الإدارة</button>
+      <button type="button" onclick="closeAdminModal()" class="rounded-xl border border-slate-200 px-5 py-3 font-semibold text-slate-600 transition hover:bg-slate-50">إلغاء</button>
+     </div>
+    </form>
    </div>
-  </div><!-- Admin Tools -->
+  </div>
+  <!-- Admin Tools -->
   <section id="admin-tools" data-template-id="admin-tools" class="canva-panel mx-auto mb-10 hidden w-full max-w-7xl rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
    <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
@@ -586,27 +940,172 @@
     document.getElementById('assistant-form').addEventListener('submit', async function(e){ e.preventDefault(); const input=document.getElementById('assistant-input'), query=input.value.trim(); if(!query)return; assistantHistory.push({role:'user',text:query}); renderAssistantChat(); input.value=''; const messages=document.getElementById('assistant-messages'); messages.insertAdjacentHTML('beforeend','<div id="assistant-thinking" class="text-right text-sm text-slate-400 animate-pulse">المساعد يفكر... أبحث في محتويات الموقع...</div>'); try { const answer=await requestAssistantAnswer(query); document.getElementById('assistant-thinking')?.remove(); assistantHistory.push({role:'assistant',text:answer.text || 'لم تصل إجابة من خدمة المساعد.'}); renderAssistantChat(); const last=document.getElementById('assistant-messages').lastElementChild?.querySelector('div'); const siteResults=searchSiteContent(query); if(last && siteResults.length) last.insertAdjacentHTML('beforeend',renderAssistantSources(siteResults)); if(last && answer.sources.length) last.insertAdjacentHTML('beforeend','<div class="mt-3 border-t border-slate-200 pt-3"><strong>🌐 مصادر خارجية موثوقة</strong><div class="mt-3 grid gap-3">'+answer.sources.map(s=>'<div class="rounded-xl border border-slate-200 bg-white p-3"><div class="font-bold text-blue-950">'+escapeHtml(s.title)+'</div><div class="mt-1 text-sm text-slate-600">'+escapeHtml(s.description||s.domain||'مصدر تعليمي موثوق')+'</div><a class="mt-2 inline-block font-bold text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" href="'+escapeHtml(s.url)+'">فتح المصدر ←</a></div>').join('')+'</div></div>'); } catch (error) { document.getElementById('assistant-thinking')?.remove(); const unavailable = error && error.message === 'assistant_unavailable'; assistantHistory.push({role:'assistant',text: unavailable ? 'خدمة الذكاء الاصطناعي غير متاحة حاليًا. تحتاج هذه البيئة إلى ربط المساعد بخادم خارجي يوفّر المسار /api/assistant/chat.' : 'تعذر قراءة استجابة صحيحة من خدمة الذكاء الاصطناعي. تأكد من أن المسار /api/assistant/chat يعيد JSON يحتوي على الحقل answer.'}); renderAssistantChat(); } });
 
     // ============ ADMIN ============
+    // ============ ADMIN AUTH ============
+    let adminAuthenticated = false;
+    let adminSessionCheckPromise = null;
+
     function openAdminModal() {
       const m = document.getElementById('admin-modal');
-      m.classList.remove('hidden'); m.classList.add('flex');
+      m.classList.remove('hidden');
+      m.classList.add('flex');
+      const status = document.getElementById('admin-login-status');
+      status.classList.add('hidden');
+      status.textContent = '';
+      const password = document.getElementById('admin-password');
+      password.value = '';
+      setTimeout(() => password.focus(), 50);
     }
+
     function closeAdminModal() {
       const m = document.getElementById('admin-modal');
-      m.classList.add('hidden'); m.classList.remove('flex');
+      m.classList.add('hidden');
+      m.classList.remove('flex');
     }
-    function activateAdminMode() {
-      closeAdminModal();
-      document.getElementById('admin-tools').classList.remove('hidden');
-      document.getElementById('admin-tools').scrollIntoView({ behavior: 'smooth' });
+
+    function toggleAdminPassword() {
+      const input = document.getElementById('admin-password');
+      const button = document.querySelector('#admin-password + button');
+      const visible = input.type === 'text';
+      input.type = visible ? 'password' : 'text';
+      if (button) button.textContent = visible ? 'إظهار' : 'إخفاء';
     }
-    function logoutAdmin() {
+
+    function showAdminLoginStatus(message, ok = false) {
+      const el = document.getElementById('admin-login-status');
+      el.textContent = message;
+      el.className = `mt-3 rounded-xl px-4 py-3 text-sm font-semibold ${
+        ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+      }`;
+      el.classList.remove('hidden');
+    }
+
+    async function checkAdminSession() {
+      if (adminSessionCheckPromise) return adminSessionCheckPromise;
+
+      adminSessionCheckPromise = (async () => {
+        try {
+          const response = await fetch('/api/admin/session', {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Accept': 'application/json' }
+          });
+
+          if (!response.ok) {
+            adminAuthenticated = false;
+            return false;
+          }
+
+          const data = await response.json();
+          adminAuthenticated = data && data.authenticated === true;
+          return adminAuthenticated;
+        } catch (_) {
+          adminAuthenticated = false;
+          return false;
+        } finally {
+          adminSessionCheckPromise = null;
+        }
+      })();
+
+      return adminSessionCheckPromise;
+    }
+
+    async function loginAdmin(password) {
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({ password })
+      });
+
+      let data = {};
+      try {
+        data = await response.json();
+      } catch (_) {}
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'كلمة المرور غير صحيحة.');
+      }
+
+      adminAuthenticated = true;
+      return true;
+    }
+
+    async function activateAdminMode() {
+      const authenticated = await checkAdminSession();
+
+      if (authenticated) {
+        closeAdminModal();
+        document.getElementById('admin-tools').classList.remove('hidden');
+        document.getElementById('admin-tools').scrollIntoView({ behavior: 'smooth' });
+        return true;
+      }
+
+      openAdminModal();
+      return false;
+    }
+
+    async function logoutAdmin() {
+      try {
+        await fetch('/api/admin/logout', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Accept': 'application/json' }
+        });
+      } catch (_) {}
+
+      adminAuthenticated = false;
       document.getElementById('admin-tools').classList.add('hidden');
       closeAdminWorkspace();
       navigateTo('home');
+
       const toast = document.getElementById('logout-toast');
+      toast.textContent = 'تم تسجيل الخروج من وضع الإدارة بنجاح';
       toast.classList.remove('hidden');
       setTimeout(() => toast.classList.add('hidden'), 3500);
     }
+
+    document.getElementById('admin-login-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+
+      const password = document.getElementById('admin-password').value.trim();
+      const button = document.getElementById('admin-login-submit');
+
+      if (!password) {
+        showAdminLoginStatus('أدخل كلمة المرور أولًا.');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'جارٍ التحقق...';
+
+      try {
+        await loginAdmin(password);
+        showAdminLoginStatus('تم تسجيل الدخول بنجاح.', true);
+
+        setTimeout(() => {
+          closeAdminModal();
+          document.getElementById('admin-tools').classList.remove('hidden');
+          document.getElementById('admin-tools').scrollIntoView({ behavior: 'smooth' });
+        }, 250);
+      } catch (error) {
+        adminAuthenticated = false;
+        showAdminLoginStatus(error.message || 'تعذر تسجيل الدخول.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'دخول الإدارة';
+      }
+    });
+
+    document.getElementById('admin-modal').addEventListener('click', function(e) {
+      if (e.target === this) closeAdminModal();
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeAdminModal();
+    });
 
     let currentAdminMode = 'edit';
     let editingRecord = null;
@@ -861,3 +1360,7 @@
   </script>
  </body>
 </html>
+
+```
+
+
