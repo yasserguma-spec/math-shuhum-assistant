@@ -1,5 +1,11 @@
 import crypto from "crypto";
 
+export const config = {
+  api: {
+    bodyParser: true,
+  },
+};
+
 function setCors(res) {
   const origin =
     process.env.FRONTEND_ORIGIN ||
@@ -7,7 +13,10 @@ function setCors(res) {
 
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "POST, OPTIONS"
+  );
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type"
@@ -15,20 +24,25 @@ function setCors(res) {
 }
 
 function createSessionToken() {
+  const secret = process.env.ADMIN_PASSWORD;
+
+  if (!secret) {
+    throw new Error(
+      "ADMIN_PASSWORD is not configured"
+    );
+  }
+
   const payload = {
     role: "admin",
-    exp: Date.now() + 8 * 60 * 60 * 1000
+    exp: Date.now() + 8 * 60 * 60 * 1000,
   };
 
-  const raw = Buffer
-    .from(JSON.stringify(payload))
-    .toString("base64url");
+  const raw = Buffer.from(
+    JSON.stringify(payload)
+  ).toString("base64url");
 
   const signature = crypto
-    .createHmac(
-      "sha256",
-      process.env.ADMIN_PASSWORD || ""
-    )
+    .createHmac("sha256", secret)
     .update(raw)
     .digest("base64url");
 
@@ -38,31 +52,29 @@ function createSessionToken() {
 export default async function handler(req, res) {
   setCors(res);
 
-  // CORS preflight
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
-  // Only POST is allowed
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
-      error: "Method not allowed"
+      error: "Method not allowed",
     });
   }
 
   const adminPassword =
     process.env.ADMIN_PASSWORD;
 
-  // Make sure the environment variable exists
   if (!adminPassword) {
     console.error(
-      "ADMIN_PASSWORD environment variable is missing"
+      "ADMIN_PASSWORD is missing in Vercel Environment Variables"
     );
 
     return res.status(500).json({
       success: false,
-      error: "إعداد كلمة مرور الإدارة غير مكتمل في Vercel."
+      error:
+        "لم يتم إعداد كلمة مرور الإدارة في Vercel.",
     });
   }
 
@@ -77,7 +89,7 @@ export default async function handler(req, res) {
     if (!password) {
       return res.status(400).json({
         success: false,
-        error: "يرجى إدخال كلمة المرور."
+        error: "يرجى إدخال كلمة المرور.",
       });
     }
 
@@ -87,49 +99,43 @@ export default async function handler(req, res) {
     const adminPasswordBuffer =
       Buffer.from(adminPassword);
 
-    let passwordMatch = false;
+    let passwordMatches = false;
 
     if (
       passwordBuffer.length ===
       adminPasswordBuffer.length
     ) {
-      passwordMatch =
+      passwordMatches =
         crypto.timingSafeEqual(
           passwordBuffer,
           adminPasswordBuffer
         );
     }
 
-    if (!passwordMatch) {
+    if (!passwordMatches) {
       return res.status(401).json({
         success: false,
-        error: "كلمة المرور غير صحيحة."
+        error: "كلمة المرور غير صحيحة.",
       });
     }
 
-    // Create authenticated session
-    const token = createSessionToken();
+    const token =
+      createSessionToken();
 
     res.setHeader(
       "Set-Cookie",
-      [
-        `admin_session=${encodeURIComponent(token)}`,
-        "Path=/",
-        "HttpOnly",
-        "Secure",
-        "SameSite=Lax",
-        "Max-Age=28800"
-      ].join("; ")
+      `admin_session=${encodeURIComponent(
+        token
+      )}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=28800`
     );
 
     return res.status(200).json({
       success: true,
       authenticated: true,
-      message: "تم تسجيل الدخول بنجاح."
+      message: "تم تسجيل الدخول بنجاح.",
     });
 
   } catch (error) {
-
     console.error(
       "Admin login error:",
       error
@@ -137,7 +143,8 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       success: false,
-      error: "حدث خطأ أثناء تسجيل الدخول."
+      error:
+        "حدث خطأ أثناء تسجيل الدخول.",
     });
   }
 }
