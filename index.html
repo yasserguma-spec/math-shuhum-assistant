@@ -25,6 +25,9 @@
     .admin-action-card { min-height: 110px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.45rem; border:1px solid #e2e8f0; background:#fff; border-radius:1.25rem; transition:.2s; }
     .admin-action-card:hover { transform:translateY(-2px); box-shadow:0 10px 25px rgba(15,23,42,.08); }
     .admin-action-icon { width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.25rem; }
+    .achievement-card { position:relative; overflow:hidden; border-radius:1.5rem; background:linear-gradient(145deg,#fff7ed,#ffffff 48%,#fff1f2); border:1px solid #fed7aa; box-shadow:0 12px 30px rgba(15,23,42,.08); }
+    .achievement-photo { width:118px; height:118px; border-radius:999px; object-fit:cover; border:5px solid #fbbf24; box-shadow:0 8px 24px rgba(245,158,11,.22); background:#fff; }
+    .achievement-rank { display:inline-flex; min-width:44px; height:44px; align-items:center; justify-content:center; border-radius:999px; background:#f59e0b; color:#fff; font-weight:800; box-shadow:0 6px 15px rgba(245,158,11,.25); }
     #home-sections-grid { min-height: 120px; }
     #home-sections-grid:empty::before { content:'جارٍ تجهيز أقسام الموقع...'; display:block; grid-column:1/-1; text-align:center; color:#64748b; padding:2rem; }
   </style>
@@ -239,6 +242,26 @@
     <div id="generic-content-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
     <p id="generic-empty" class="text-center text-slate-500 py-8">لا توجد محتويات حاليًا في هذا القسم.</p>
    </main>
+  </div><!-- ===== MATH ACHIEVEMENTS PAGE ===== -->
+  <div id="page-math-achievements" class="page-view">
+   <div class="max-w-7xl mx-auto px-4 pt-4">
+    <a href="#home" onclick="navigateTo('home')" class="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm">
+     <i data-lucide="arrow-right" class="w-4 h-4"></i> العودة إلى الرئيسية
+    </a>
+   </div>
+   <section class="relative overflow-hidden bg-gradient-to-l from-rose-700 via-rose-600 to-amber-500 py-14 text-center text-white">
+    <div class="absolute -left-6 top-0 text-8xl opacity-10">🏆</div><div class="absolute right-8 bottom-0 text-7xl opacity-10">⭐</div>
+    <div class="relative z-10 mx-auto max-w-3xl px-4">
+     <div class="mb-3 text-5xl">🏆</div>
+     <h1 class="text-3xl font-extrabold md:text-4xl">مجيدات الرياضيات</h1>
+     <p class="mt-3 text-white/90">نحتفي بطالباتنا المجيدات ونفخر بإنجازاتهن وتميزهن في الرياضيات.</p>
+    </div>
+   </section>
+   <main class="mx-auto max-w-7xl px-4 py-12">
+    <div class="mb-8 text-center"><h2 class="text-2xl font-extrabold text-blue-950">🌟 نفخر بإنجازات طالباتنا</h2><p class="mt-2 text-slate-500">صفحة تكريمية توثق أسماء الطالبات ومراكزهن وصورهن.</p></div>
+    <div id="achievements-grid" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
+    <p id="achievements-empty" class="hidden py-12 text-center text-slate-500">لم تتم إضافة مجيدات الرياضيات بعد.</p>
+   </main>
   </div><!-- Admin Modal -->
   <div id="admin-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 px-4" role="dialog" aria-modal="true">
    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl">
@@ -287,6 +310,9 @@
     <button onclick="openAdminWorkspace('manage')" type="button" class="admin-action-card">
       <span class="admin-action-icon bg-amber-100 text-amber-700">⚙️</span><strong class="text-blue-950">إدارة الأقسام والصفوف</strong><span class="text-xs text-slate-500">إضافة وتعديل وتنظيم الهيكل</span>
     </button>
+    <button onclick="openAdminWorkspace('achievements')" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-rose-100 text-rose-700">🏆</span><strong class="text-blue-950">إدارة مجيدات الرياضيات</strong><span class="text-xs text-slate-500">إضافة الطالبات والمراكز والصور</span>
+    </button>
    </div>
    <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
     <strong>🔒 حالة الإدارة:</strong> تم تسجيل الدخول بنجاح. أدوات الإدارة متاحة لك فقط.
@@ -311,6 +337,48 @@
     <div id="content-list-panel" class="hidden">
      <h3 class="mb-4 text-xl font-bold text-blue-950">المحتويات</h3>
      <div id="managed-content-list" class="grid gap-3"></div>
+    </div>
+    <div id="achievement-workspace" class="hidden rounded-2xl border border-rose-100 bg-rose-50/50 p-4 md:p-6">
+     <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
+      <div>
+       <h3 class="text-xl font-extrabold text-rose-900">🏆 إدارة مجيدات الرياضيات</h3>
+       <p class="mt-1 text-sm text-slate-600">أضف اسم الطالبة والصف والمركز وصورتها، وسيتم عرضها في صفحة الإنجازات بتصميم احتفالي.</p>
+      </div>
+      <button type="button" onclick="resetAchievementForm()" class="rounded-xl border border-rose-200 bg-white px-4 py-2 font-semibold text-rose-700">إضافة جديدة</button>
+     </div>
+     <form id="achievement-form" class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <label class="font-bold text-slate-800">اسم الطالبة
+       <input id="achievement-student-name" required type="text" class="mt-2 w-full rounded-xl border border-rose-200 bg-white p-3" placeholder="مثال: أمل البلوشية">
+      </label>
+      <label class="font-bold text-slate-800">الصف الدراسي
+       <select id="achievement-grade" required class="mt-2 w-full rounded-xl border border-rose-200 bg-white p-3"></select>
+      </label>
+      <label class="font-bold text-slate-800">المركز
+       <select id="achievement-rank" required class="mt-2 w-full rounded-xl border border-rose-200 bg-white p-3">
+        <option value="">اختر المركز</option>
+        <option value="1">المركز الأول</option><option value="2">المركز الثاني</option><option value="3">المركز الثالث</option>
+        <option value="4">المركز الرابع</option><option value="5">المركز الخامس</option><option value="6">المركز السادس</option>
+        <option value="7">المركز السابع</option><option value="8">المركز الثامن</option><option value="9">المركز التاسع</option>
+        <option value="10">المركز العاشر</option><option value="11">المركز الحادي عشر</option><option value="12">المركز الثاني عشر</option>
+       </select>
+      </label>
+      <label class="font-bold text-slate-800">رابط الصورة (اختياري)
+       <input id="achievement-image-url" type="url" class="mt-2 w-full rounded-xl border border-rose-200 bg-white p-3" placeholder="ضع رابط الصورة المباشر">
+      </label>
+      <label class="font-bold text-slate-800">رفع صورة الطالبة
+       <input id="achievement-image-file" accept="image/jpeg,image/png,image/webp" type="file" class="mt-2 w-full rounded-xl border border-rose-200 bg-white p-3">
+       <span class="mt-1 block text-xs font-normal text-slate-500">JPG أو PNG أو WEBP — الحد الأقصى 4MB.</span>
+      </label>
+      <div class="flex items-end gap-3">
+       <button id="achievement-save-button" type="submit" class="rounded-xl bg-rose-600 px-5 py-3 font-bold text-white shadow-md hover:bg-rose-700">حفظ المجيدة</button>
+       <button type="button" onclick="closeAdminWorkspace()" class="rounded-xl border border-slate-200 bg-white px-5 py-3 font-semibold">إغلاق</button>
+      </div>
+      <div id="achievement-status" class="hidden md:col-span-2 rounded-xl px-4 py-3 font-semibold" role="status"></div>
+     </form>
+     <div class="mt-8">
+      <h4 class="mb-4 text-lg font-extrabold text-slate-800">المجيدات المسجلات</h4>
+      <div id="achievement-admin-list" class="grid gap-3"></div>
+     </div>
     </div>
     <div id="management-tabs" class="hidden">
      <div class="mb-5 flex flex-wrap gap-2" role="tablist"><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" onclick="showManagementTab('sections')">الأقسام</button> <button class="rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700" onclick="showManagementTab('grades')">الصفوف</button>
@@ -366,7 +434,7 @@
       siteGrades = sourceRecords.filter(r => r.section === '__grade__' || r.record_type === 'grade')
         .map(r => ({ ...r, grade: r.grade || r.grade_id, title: r.title || r.name, content_type: r.content_type || r.icon }))
         .sort((a,b) => (Number(a.description || a.sort_order)||0) - (Number(b.description || b.sort_order)||0));
-      contentRecords = sourceRecords.filter(r => r.section !== '__section__' && r.section !== '__grade__' && r.record_type !== 'section' && r.record_type !== 'grade')
+      contentRecords = sourceRecords.filter(r => r.section !== '__section__' && r.section !== '__grade__' && r.record_type !== 'section' && r.record_type !== 'grade' && r.record_type !== 'achievement')
         .map(r => ({ ...r, section: r.section || r.section_id }));
       if (!siteSections.length) console.error('[رياضيات بلاد الشهوم] لم تُقرأ سجلات الأقسام. عدد السجلات:', allRecords.length);
     }
@@ -439,6 +507,11 @@
         initAssistantChat();
         return;
       }
+      if (sectionId === 'math-achievements') {
+        navigateTo('math-achievements');
+        renderAchievements();
+        return;
+      }
       if (hasGrades) {
         document.getElementById('section-page-title').textContent = name;
         document.getElementById('breadcrumb-section-name').textContent = name;
@@ -478,28 +551,34 @@
 
     function renderNavLinks() {
       const nav = document.getElementById('nav-sections-links');
+      if (!nav) return;
+      const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       nav.innerHTML = '<a href="#home" onclick="navigateTo(\'home\')" class="hover:text-blue-600 transition">الرئيسية</a>' +
-        siteSections.slice(0, 7).map(sec => `<a href="#" onclick="navigateToSection('${escapeHtml(sec.grade)}'); return false;" class="hover:text-blue-600 transition">${escapeHtml(sec.title)}</a>`).join('');
+        sections.slice(0, 7).map(sec => `<a href="#" onclick="navigateToSection('${escapeHtml(sec.grade)}'); return false;" class="hover:text-blue-600 transition">${escapeHtml(sec.title)}</a>`).join('');
     }
 
     // ============ GRADES VIEW ============
     const gradeIcons = ['calculator','ruler','triangle','pi-square','sigma','function-square','book-open','brain','graduation-cap','award'];
+    const defaultGradeRecords = [['الصف الخامس','grade5'],['الصف السادس','grade6'],['الصف السابع','grade7'],['الصف الثامن','grade8'],['الصف التاسع','grade9'],['الصف العاشر','grade10'],['الصف الحادي عشر','grade11'],['الصف الثاني عشر','grade12']];
+
+    function getAvailableGrades() {
+      return siteGrades.length ? siteGrades : defaultGradeRecords.map(([title,id],i)=>({title,grade:id,content_type:gradeIcons[i % gradeIcons.length]}));
+    }
 
     function renderGradesGrid() {
       const grid = document.getElementById('grades-grid');
-      grid.innerHTML = siteGrades.map((g, i) => {
+      if (!grid) return;
+      const grades = getAvailableGrades();
+      grid.innerHTML = grades.map((g, i) => {
         const icon = g.content_type || gradeIcons[i % gradeIcons.length];
-        return `<button onclick="showGrade('${escapeHtml(g.grade)}')" class="card-hover rounded-2xl p-6 text-center cursor-pointer border border-blue-100 bg-white">
-          <div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="${icon}" class="w-7 h-7 text-blue-600"></i></div>
-          <p class="font-bold text-blue-900">${escapeHtml(g.title)}</p>
-        </button>`;
+        return `<button onclick="showGrade('${escapeHtml(g.grade)}')" class="card-hover rounded-2xl p-6 text-center cursor-pointer border border-blue-100 bg-white"><div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="${icon}" class="w-7 h-7 text-blue-600"></i></div><p class="font-bold text-blue-900">${escapeHtml(g.title)}</p></button>`;
       }).join('');
       lucide.createIcons();
     }
 
     function showGrade(gradeId) {
       currentGrade = gradeId;
-      const g = siteGrades.find(r => r.grade === gradeId);
+      const g = getAvailableGrades().find(r => r.grade === gradeId);
       const name = g ? g.title : gradeId;
       document.getElementById('grades-view').classList.add('hidden');
       document.getElementById('grade-detail').classList.remove('hidden');
@@ -754,6 +833,11 @@
       document.getElementById('admin-editor').classList.toggle('hidden', mode !== 'add' && mode !== 'edit');
       document.getElementById('content-list-panel').classList.toggle('hidden', mode !== 'edit' && mode !== 'delete');
       document.getElementById('management-tabs').classList.toggle('hidden', mode !== 'manage');
+      document.getElementById('achievement-workspace').classList.toggle('hidden', mode !== 'achievements');
+      if (mode === 'achievements') {
+        resetAchievementForm();
+        renderAchievementAdminList();
+      }
       if (mode === 'add') {
         editingRecord = null;
         document.getElementById('content-form').reset();
@@ -769,11 +853,17 @@
 
     function populateSectionSelect() {
       const sel = document.getElementById('admin-content-section');
-      sel.innerHTML = siteSections.map(s => `<option value="${escapeHtml(s.grade)}">${escapeHtml(s.title)}</option>`).join('');
+      if (!sel) return;
+      const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
+      sel.innerHTML = sections.map(s => `<option value="${escapeHtml(s.grade)}">${escapeHtml(s.title)}</option>`).join('');
+      if (!sel.value && sections.length) sel.value = sections[0].grade;
     }
     function populateGradeSelect() {
       const sel = document.getElementById('admin-content-grade');
-      sel.innerHTML = siteGrades.map(g => `<option value="${escapeHtml(g.grade)}">${escapeHtml(g.title)}</option>`).join('');
+      if (!sel) return;
+      const grades = getAvailableGrades();
+      sel.innerHTML = grades.map(g => `<option value="${escapeHtml(g.grade)}">${escapeHtml(g.title)}</option>`).join('');
+      if (!sel.value && grades.length) sel.value = grades[0].grade;
     }
 
     const professionalTypes = ['ورقة عمل', 'ملف', 'فيديو', 'رابط'];
@@ -781,7 +871,8 @@
 
     function handleSectionChange() {
       const sectionId = document.getElementById('admin-content-section').value;
-      const sec = siteSections.find(s => s.grade === sectionId);
+      const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
+      const sec = sections.find(s => s.grade === sectionId);
       const isPro = sec && sec.title.includes('التنمية المهنية');
       const gradeLabel = document.getElementById('grade-label');
       const typeSelect = document.getElementById('admin-content-type');
@@ -846,7 +937,8 @@
       const btn = document.getElementById('save-content-button');
       btn.disabled = true;
       const sectionId = document.getElementById('admin-content-section').value;
-      const sec = siteSections.find(s => s.grade === sectionId);
+      const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
+      const sec = sections.find(s => s.grade === sectionId);
       const isPro = sec && sec.title.includes('التنمية المهنية');
       const record = {
         title: document.getElementById('admin-content-title').value,
@@ -871,6 +963,103 @@
       document.getElementById('content-form').reset();
       handleSectionChange();
     });
+
+    // ============ MATH ACHIEVEMENTS ============
+    let editingAchievement = null;
+
+    function getAchievementRecords() {
+      return allRecords.filter(r => r.record_type === 'achievement' || (r.section === 'math-achievements' && r.content_type === 'مجيدة')).sort((a,b) => Number(a.link || 99) - Number(b.link || 99));
+    }
+
+    function setAchievementStatus(message, ok = true) {
+      const el = document.getElementById('achievement-status');
+      if (!el) return;
+      el.textContent = message;
+      el.className = `md:col-span-2 rounded-xl px-4 py-3 font-semibold ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+      el.classList.remove('hidden');
+    }
+
+    function populateAchievementGradeSelect() {
+      const sel = document.getElementById('achievement-grade');
+      if (!sel) return;
+      const grades = getAvailableGrades();
+      sel.innerHTML = '<option value="">اختر الصف</option>' + grades.map(g => `<option value="${escapeHtml(g.grade)}">${escapeHtml(g.title)}</option>`).join('');
+    }
+
+    function resetAchievementForm() {
+      editingAchievement = null;
+      const form = document.getElementById('achievement-form');
+      if (form) form.reset();
+      populateAchievementGradeSelect();
+      const btn = document.getElementById('achievement-save-button');
+      if (btn) btn.textContent = 'حفظ المجيدة';
+      const status = document.getElementById('achievement-status');
+      if (status) status.classList.add('hidden');
+    }
+
+    function renderAchievementAdminList() {
+      const list = document.getElementById('achievement-admin-list');
+      if (!list) return;
+      const records = getAchievementRecords();
+      list.innerHTML = records.length ? records.map(item => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-white p-4"><div class="flex items-center gap-3">${item.image_url ? `<img src="${escapeHtml(item.image_url)}" class="h-14 w-14 rounded-full object-cover border-2 border-amber-400" alt="">` : '<div class="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-xl">🏆</div>'}<div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getAvailableGrades().find(g => g.grade === item.grade)?.title || item.grade || 'عام')} · المركز ${escapeHtml(item.link || '')}</p></div></div><button type="button" onclick="deleteAchievement('${escapeHtml(item.__backendId)}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button></div>`).join('') : '<p class="rounded-xl bg-white p-5 text-center text-slate-500">لا توجد مجيدات مسجلات حتى الآن.</p>';
+    }
+
+    async function uploadAchievementImage(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/api/assistant/upload', {method:'POST', credentials:'include', body:formData});
+      let data = {}; try { data = await response.json(); } catch (_) {}
+      if (!response.ok || !data.success || !data.url) throw new Error(data.error || 'تعذر رفع الصورة.');
+      return data.url;
+    }
+
+    async function deleteAchievement(backendId) {
+      const record = allRecords.find(r => r.__backendId === backendId);
+      if (!record) return;
+      if (!confirm(`هل تريد حذف مجيدة الرياضيات "${record.title || ''}"؟`)) return;
+      const result = await window.dataSdk.delete(record);
+      if (!result.isOk) { setAchievementStatus('تعذر حذف المجيدة.', false); return; }
+      setAchievementStatus('تم حذف المجيدة بنجاح.');
+      renderAchievementAdminList();
+      renderAchievements();
+    }
+
+    document.getElementById('achievement-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('achievement-save-button');
+      const name = document.getElementById('achievement-student-name').value.trim();
+      const grade = document.getElementById('achievement-grade').value;
+      const rank = document.getElementById('achievement-rank').value;
+      const imageUrlInput = document.getElementById('achievement-image-url').value.trim();
+      const file = document.getElementById('achievement-image-file').files[0];
+      if (!name || !grade || !rank) { setAchievementStatus('يرجى إدخال اسم الطالبة والصف والمركز.', false); return; }
+      btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+      try {
+        let imageUrl = imageUrlInput;
+        if (file) { if (file.size > 4*1024*1024) throw new Error('حجم الصورة أكبر من 4MB.'); imageUrl = await uploadAchievementImage(file); }
+        const record = {title:name, description:'مجيدة الرياضيات', section:'math-achievements', grade, content_type:'مجيدة', link:rank, image_url:imageUrl, record_type:'achievement', created_at:new Date().toISOString()};
+        const result = editingAchievement ? await window.dataSdk.update({...editingAchievement,...record}) : await window.dataSdk.create(record);
+        if (!result.isOk) throw new Error('تعذر حفظ بيانات المجيدة.');
+        setAchievementStatus(editingAchievement ? 'تم تحديث بيانات المجيدة بنجاح.' : 'تمت إضافة المجيدة بنجاح.');
+        resetAchievementForm(); renderAchievementAdminList(); renderAchievements();
+      } catch (error) { console.error('[رياضيات بلاد الشهوم] Achievement error:', error); setAchievementStatus(error.message || 'حدث خطأ أثناء حفظ المجيدة.', false); }
+      finally { btn.disabled = false; btn.textContent = 'حفظ المجيدة'; }
+    });
+
+    function renderAchievements() {
+      const grid = document.getElementById('achievements-grid'); const empty = document.getElementById('achievements-empty');
+      if (!grid) return;
+      const records = getAchievementRecords();
+      if (!records.length) { grid.innerHTML=''; if(empty) empty.classList.remove('hidden'); return; }
+      if(empty) empty.classList.add('hidden');
+      grid.innerHTML = records.map((item,index) => {
+        const rank = Number(item.link) || index+1;
+        const rankText = rank===1?'الأول':rank===2?'الثاني':rank===3?'الثالث':String(rank);
+        const gradeName = getAvailableGrades().find(g=>g.grade===item.grade)?.title || item.grade || 'عام';
+        return `<article class="achievement-card p-6 text-center"><div class="relative z-10"><div class="mb-4 flex items-center justify-center gap-3"><span class="achievement-rank">${rank}</span><span class="font-extrabold text-amber-700">المركز ${rankText}</span></div>${item.image_url ? `<img src="${escapeHtml(item.image_url)}" class="achievement-photo mx-auto" alt="صورة ${escapeHtml(item.title || 'الطالبة')}" onerror="this.style.display='none';this.nextElementSibling.classList.remove('hidden')"><div class="achievement-photo mx-auto hidden flex items-center justify-center text-4xl">👩‍🎓</div>` : `<div class="achievement-photo mx-auto flex items-center justify-center text-4xl">👩‍🎓</div>`}<div class="mt-5 text-sm font-bold text-rose-600">المجيدة في الرياضيات</div><h3 class="mt-1 text-xl font-extrabold text-blue-950">${escapeHtml(item.title || '')}</h3><p class="mt-2 text-slate-600">🎓 ${escapeHtml(gradeName)}</p><div class="mt-5 border-t border-amber-100 pt-4 text-sm font-semibold text-slate-500">نفخر بكِ وبإنجازكِ 🌟</div></div></article>`;
+      }).join('');
+      lucide.createIcons();
+    }
 
     // ============ MANAGEMENT TABS (Sections & Grades) ============
     function showManagementTab(tab) {
@@ -1001,6 +1190,7 @@
     // Paint the seven local defaults before any SDK callback; an empty callback must never blank the homepage.
     renderHomeSections();
     renderNavLinks();
+    renderAchievements();
 
     // The SDK callback is defined before initialization and is the only state updater.
     function handleDataChanged(data) {
@@ -1014,6 +1204,7 @@
         });
         if (document.getElementById('page-professional').classList.contains('active')) renderProfessionalContent();
         if (document.getElementById('page-generic-section').classList.contains('active')) renderGenericSection();
+        if (document.getElementById('page-math-achievements') && document.getElementById('page-math-achievements').classList.contains('active')) renderAchievements();
         if (document.getElementById('grades-view') && !document.getElementById('grades-view').classList.contains('hidden')) renderGradesGrid();
         if (!document.getElementById('management-tabs').classList.contains('hidden')) {
           const activeTab = siteSections.length ? 'sections' : 'grades';
