@@ -1,4 +1,5 @@
 import { put } from "@vercel/blob";
+import Busboy from "busboy";
 
 export const config = {
   api: {
@@ -6,103 +7,116 @@ export const config = {
   },
 };
 
+function sendJson(res, status, data) {
+  res.status(status).json(data);
+}
+
 function setCors(res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const allowedOrigin = process.env.FRONTEND_ORIGIN || "*";
+
+  res.setHeader("Access-Control-Allow-Origin", allowedOrigin);
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 }
 
-async function readMultipartFile(req) {
-  const contentType = req.headers["content-type"] || "";
+function parseMultipart(req) {
+  return new Promise((resolve, reject) => {
+    const contentType = req.headers["content-type"] || "";
 
-  if (!contentType.includes("multipart/form-data")) {
-    throw new Error("يجب إرسال الصورة باستخدام multipart/form-data.");
-  }
-
-  const boundaryMatch = contentType.match(/boundary=(?:"([^"]+)"|([^;]+))/i);
-
-  if (!boundaryMatch) {
-    throw new Error("تعذر تحديد بيانات رفع الصورة.");
-  }
-
-  const boundary = boundaryMatch[1] || boundaryMatch[2];
-
-  const chunks = [];
-
-  for await (const chunk of req) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-  }
-
-  const buffer = Buffer.concat(chunks);
-
-  const boundaryBuffer = Buffer.from(`--${boundary}`);
-
-  const parts = [];
-
-  let start = 0;
-
-  while (true) {
-    const index = buffer.indexOf(boundaryBuffer, start);
-
-    if (index === -1) {
-      break;
+    if (!contentType.toLowerCase().startsWith("multipart/form-data")) {
+      reject(
+        new Error(
+          "يجب إرسال الصورة باستخدام multipart/form-data."
+        )
+      );
+      return;
     }
 
-    parts.push(buffer.slice(start, index));
+    let fileBuffer = null;
+    let filename = "";
+    let mimeType = "";
 
-    start = index + boundaryBuffer.length;
+    const busboy = Busboy({
+      headers: req.headers,
+      limits: {
+        files: 1,
+        fileSize: 4 * 1024 * 1024,
+      },
+    });
+
+    busboy.on("file", (fieldname, file, info) => {
+      const {
+        filename: incomingFilename,
+        mimeType: incomingMimeType,
+      } = info;
+
+      if (fieldname !== "file") {
+        file.resume();
+        return;
+      }
+
+      filename = incomingFilename || "image";
+      mimeType = (incomingMimeType || "").toLowerCase();
+
+      const chunks = [];
+
+      file.on("data", (chunk) => {
+        chunks.push(chunk);
+      });
+
+      file.on("limit", () => {
+        reject(
+          new Error(
+            "حجم الصورة كبير جدًا. الحد الأقصى 4MB."
+          )
+        );
+      });
+
+      file.on("end", () => {
+        fileBuffer = Buffer.concat(chunks);
+      });
+    });
+
+    busboy.on("finish", () => {
+      if (!fileBuffer || !fileBuffer.length) {
+        reject(
+          new Error(
+            "لم يتم العثور على ملف صورة باسم file."
+          )
+        );
+        return;
+      }
+
+      resolve({
+        buffer: fileBuffer,
+        filename,
+        mimeType,
+      });
+    });
+
+    busboy.on("error", (error) => {
+      reject(error);
+    });
+
+    req.pipe(busboy);
+  });
+}
+
+function getExtension(mimeType, filename) {
+  const map = {
+    "image/jpeg": "jpg",
+    "image/jpg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+
+  if (map[mimeType]) {
+    return map[mimeType];
   }
 
-  for (const part of parts) {
-    const cleaned = part
-      .toString("latin1")
-      .replace(/^\r\n/, "")
-      .replace(/\r\n$/, "");
+  const match = filename.match(/\.([a-zA-Z0-9]+)$/);
 
-    const headerEnd = cleaned.indexOf("\r\n\r\n");
-
-    if (headerEnd === -1) {
-      continue;
-    }
-
-    const headers = cleaned.slice(0, headerEnd);
-    const bodyStart = headerEnd + 4;
-
-    if (
-      !/name="file"/i.test(headers) ||
-      !/filename=/i.test(headers)
-    ) {
-      continue;
-    }
-
-    const dispositionMatch = headers.match(
-      /filename="([^"]*)"/i
-    );
-
-    const filename =
-      dispositionMatch?.[1] || "image.jpg";
-
-    const contentTypeMatch = headers.match(
-      /Content-Type:\s*([^\r\n]+)/i
-    );
-
-    const mimeType =
-      contentTypeMatch?.[1]?.trim() ||
-      "application/octet-stream";
-
-    const rawBody = Buffer.from(
-      cleaned.slice(bodyStart),
-      "latin1"
-    );
-
-    return {
-      filename,
-      mimeType,
-      buffer: rawBody,
-    };
-  }
-
-  throw new Error("لم يتم العثور على ملف باسم file.");
+  return match ? match[1].toLowerCase() : "jpg";
 }
 
 export default async function handler(req, res) {
@@ -113,51 +127,62 @@ export default async function handler(req, res) {
   }
 
   if (req.method !== "POST") {
-    return res.status(405).json({
+    return sendJson(res, 405, {
       success: false,
       error: "Method not allowed",
     });
   }
 
   try {
-    const { filename, mimeType, buffer } =
-      await readMultipartFile(req);
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      console.error(
+        "BLOB_READ_WRITE_TOKEN is missing."
+      );
 
-    const allowedTypes = [
+      return sendJson(res, 500, {
+        success: false,
+        error:
+          "خدمة تخزين الصور غير مهيأة على الخادم.",
+      });
+    }
+
+    const {
+      buffer,
+      filename,
+      mimeType,
+    } = await parseMultipart(req);
+
+    const allowedTypes = new Set([
       "image/jpeg",
       "image/jpg",
       "image/png",
       "image/webp",
-    ];
+    ]);
 
-    if (!allowedTypes.includes(mimeType.toLowerCase())) {
-      return res.status(400).json({
+    if (!allowedTypes.has(mimeType)) {
+      return sendJson(res, 400, {
         success: false,
         error:
           "نوع الصورة غير مدعوم. استخدم JPG أو JPEG أو PNG أو WEBP.",
       });
     }
 
-    const maxSize = 4 * 1024 * 1024;
-
-    if (buffer.length > maxSize) {
-      return res.status(400).json({
+    if (buffer.length > 4 * 1024 * 1024) {
+      return sendJson(res, 400, {
         success: false,
-        error: "حجم الصورة كبير جدًا. الحد الأقصى 4MB.",
+        error: "حجم الصورة يجب ألا يتجاوز 4MB.",
       });
     }
 
-    const extension =
-      mimeType === "image/png"
-        ? "png"
-        : mimeType === "image/webp"
-        ? "webp"
-        : "jpg";
+    const extension = getExtension(
+      mimeType,
+      filename
+    );
 
     const uniqueName =
       `majidat/${Date.now()}-${Math.random()
         .toString(36)
-        .slice(2)}.${extension}`;
+        .slice(2, 10)}.${extension}`;
 
     const blob = await put(
       uniqueName,
@@ -165,10 +190,11 @@ export default async function handler(req, res) {
       {
         access: "public",
         contentType: mimeType,
+        addRandomSuffix: false,
       }
     );
 
-    return res.status(200).json({
+    return sendJson(res, 200, {
       success: true,
       url: blob.url,
       pathname: blob.pathname,
@@ -176,9 +202,12 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error("Blob upload error:", error);
+    console.error(
+      "Vercel Blob upload error:",
+      error
+    );
 
-    return res.status(500).json({
+    return sendJson(res, 500, {
       success: false,
       error:
         error?.message ||
