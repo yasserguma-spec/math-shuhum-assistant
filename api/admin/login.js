@@ -1,11 +1,5 @@
 import crypto from "crypto";
 
-export const config = {
-  api: {
-    bodyParser: true,
-  },
-};
-
 function setCors(res) {
   const origin =
     process.env.FRONTEND_ORIGIN ||
@@ -13,10 +7,7 @@ function setCors(res) {
 
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "POST, OPTIONS"
-  );
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
     "Content-Type"
@@ -26,17 +17,17 @@ function setCors(res) {
 function createSessionToken() {
   const payload = {
     role: "admin",
-    exp: Date.now() + 8 * 60 * 60 * 1000,
+    exp: Date.now() + 8 * 60 * 60 * 1000
   };
 
-  const raw = Buffer.from(
-    JSON.stringify(payload)
-  ).toString("base64url");
+  const raw = Buffer
+    .from(JSON.stringify(payload))
+    .toString("base64url");
 
   const signature = crypto
     .createHmac(
       "sha256",
-      process.env.ADMIN_PASSWORD
+      process.env.ADMIN_PASSWORD || ""
     )
     .update(raw)
     .digest("base64url");
@@ -47,33 +38,35 @@ function createSessionToken() {
 export default async function handler(req, res) {
   setCors(res);
 
+  // CORS preflight
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
 
+  // Only POST is allowed
   if (req.method !== "POST") {
     return res.status(405).json({
       success: false,
-      error: "Method not allowed",
+      error: "Method not allowed"
+    });
+  }
+
+  const adminPassword =
+    process.env.ADMIN_PASSWORD;
+
+  // Make sure the environment variable exists
+  if (!adminPassword) {
+    console.error(
+      "ADMIN_PASSWORD environment variable is missing"
+    );
+
+    return res.status(500).json({
+      success: false,
+      error: "إعداد كلمة مرور الإدارة غير مكتمل في Vercel."
     });
   }
 
   try {
-    const adminPassword =
-      process.env.ADMIN_PASSWORD;
-
-    if (!adminPassword) {
-      console.error(
-        "ADMIN_PASSWORD is not configured."
-      );
-
-      return res.status(500).json({
-        success: false,
-        error:
-          "لم يتم إعداد كلمة مرور الإدارة في Vercel.",
-      });
-    }
-
     const body = req.body || {};
 
     const password =
@@ -84,34 +77,37 @@ export default async function handler(req, res) {
     if (!password) {
       return res.status(400).json({
         success: false,
-        error: "يرجى إدخال كلمة المرور.",
+        error: "يرجى إدخال كلمة المرور."
       });
     }
 
-    const passwordBuffer = Buffer.from(password);
+    const passwordBuffer =
+      Buffer.from(password);
+
     const adminPasswordBuffer =
       Buffer.from(adminPassword);
 
-    let passwordMatches = false;
+    let passwordMatch = false;
 
     if (
       passwordBuffer.length ===
       adminPasswordBuffer.length
     ) {
-      passwordMatches =
+      passwordMatch =
         crypto.timingSafeEqual(
           passwordBuffer,
           adminPasswordBuffer
         );
     }
 
-    if (!passwordMatches) {
+    if (!passwordMatch) {
       return res.status(401).json({
         success: false,
-        error: "كلمة المرور غير صحيحة.",
+        error: "كلمة المرور غير صحيحة."
       });
     }
 
+    // Create authenticated session
     const token = createSessionToken();
 
     res.setHeader(
@@ -122,16 +118,18 @@ export default async function handler(req, res) {
         "HttpOnly",
         "Secure",
         "SameSite=Lax",
-        "Max-Age=28800",
+        "Max-Age=28800"
       ].join("; ")
     );
 
     return res.status(200).json({
       success: true,
       authenticated: true,
-      message: "تم تسجيل الدخول بنجاح.",
+      message: "تم تسجيل الدخول بنجاح."
     });
+
   } catch (error) {
+
     console.error(
       "Admin login error:",
       error
@@ -139,8 +137,7 @@ export default async function handler(req, res) {
 
     return res.status(500).json({
       success: false,
-      error:
-        "حدث خطأ أثناء تسجيل الدخول.",
+      error: "حدث خطأ أثناء تسجيل الدخول."
     });
   }
 }
