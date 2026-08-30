@@ -14,6 +14,19 @@
     .nav-container { background: white; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
     .page-view { display: none; }
     .page-view.active { display: block; }
+
+    /* Stable visual fallbacks: the public site must remain readable even if Canva text data is unavailable. */
+    [data-template-id="hero-section"], [data-template-id="banner-section"], [data-template-id="professional-banner"] {
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 55%, #6366f1 100%);
+    }
+    [data-template-id="didyouknow-section"] { background: #eef4ff; }
+    [data-template-id="followus-section"] { background: #f8fafc; }
+    [data-template-id="admin-tools"] { background: linear-gradient(180deg,#ffffff 0%,#f8fbff 100%); }
+    .admin-action-card { min-height: 110px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.45rem; border:1px solid #e2e8f0; background:#fff; border-radius:1.25rem; transition:.2s; }
+    .admin-action-card:hover { transform:translateY(-2px); box-shadow:0 10px 25px rgba(15,23,42,.08); }
+    .admin-action-icon { width:42px;height:42px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:1.25rem; }
+    #home-sections-grid { min-height: 120px; }
+    #home-sections-grid:empty::before { content:'جارٍ تجهيز أقسام الموقع...'; display:block; grid-column:1/-1; text-align:center; color:#64748b; padding:2rem; }
   </style>
   <script src="/_sdk/b3bf9e8ac58e6ad6.data_sdk.js" type="text/javascript" integrity="sha512-otc1u9NYq9Ms5Jt//7vmhrrqR5CLPr8Jdgs6741gqniClfLMcfmC+jK/cKuQdhLv6G0esJ/FzaMS9tv0T/vj/Q=="></script>
   <script src="/_sdk/a27879be4562f807.resizing_sdk.js" type="text/javascript" integrity="sha512-trcxRwz+QLrzK0Dqg95xqVRryR7WtWui2YopXyzOIr3WMde3j/xCRgT63/b/EAg7klDsAOuHzoRgoryhwm8QFw=="></script>
@@ -231,11 +244,11 @@
    <div class="w-full max-w-md rounded-3xl bg-white p-7 shadow-2xl">
     <div class="flex items-start justify-between gap-4">
      <div>
-      <p data-template-id="admin-modal-kicker" class="canva-text mb-2 text-sm font-bold text-blue-600"></p>
-      <h2 data-template-id="admin-modal-title-text" class="canva-text text-2xl font-extrabold text-blue-950"></h2>
-     </div><button type="button" onclick="closeAdminModal()" data-template-id="admin-close-icon" class="canva-button rounded-full p-2 text-xl leading-none" aria-label="إغلاق"></button>
+      <p data-template-id="admin-modal-kicker" class="canva-text mb-2 text-sm font-bold text-blue-600">منطقة آمنة</p>
+      <h2 data-template-id="admin-modal-title-text" class="canva-text text-2xl font-extrabold text-blue-950">دخول الإدارة</h2>
+     </div><button type="button" onclick="closeAdminModal()" data-template-id="admin-close-icon" class="canva-button rounded-full p-2 text-xl leading-none" aria-label="إغلاق">×</button>
     </div>
-    <p data-template-id="admin-modal-welcome" class="canva-text mt-4 leading-relaxed text-slate-600"></p>
+    <p data-template-id="admin-modal-welcome" class="canva-text mt-4 leading-relaxed text-slate-600">أدخل كلمة مرور الإدارة للوصول إلى أدوات إدارة الموقع والمحتوى.</p>
     <form id="admin-login-form" class="mt-6 space-y-4" onsubmit="handleAdminLogin(event)">
      <label for="admin-password" class="block text-right font-bold text-blue-950">كلمة مرور الإدارة</label>
      <div class="relative">
@@ -250,14 +263,33 @@
     </form>
    </div>
   </div><!-- Admin Tools -->
-  <section id="admin-tools" data-template-id="admin-tools" class="canva-panel mx-auto mb-10 hidden w-full max-w-7xl rounded-3xl border border-blue-100 bg-white p-6 shadow-sm">
-   <div class="flex flex-wrap items-center justify-between gap-4">
-    <div>
-     <h2 data-template-id="admin-tools-title" class="canva-text text-xl font-extrabold text-blue-950"></h2>
-     <p data-template-id="admin-tools-desc" class="canva-text mt-1 text-slate-500"></p>
-    </div><button type="button" onclick="logoutAdmin()" data-template-id="admin-logout-button" class="canva-button rounded-xl bg-slate-100 px-4 py-2 font-bold text-slate-700 transition hover:bg-slate-200"></button>
+  <section id="admin-tools" class="mx-auto mb-10 hidden w-full max-w-7xl rounded-3xl border border-blue-100 bg-white p-5 shadow-lg md:p-7" aria-label="لوحة الإدارة">
+   <div class="rounded-2xl bg-gradient-to-l from-blue-950 to-blue-700 p-5 text-white shadow-md">
+    <div class="flex flex-wrap items-center justify-between gap-4">
+     <div>
+      <div class="mb-1 text-sm font-semibold text-blue-200">لوحة تحكم الموقع</div>
+      <h2 class="text-2xl font-extrabold">مرحبًا بك في إدارة الموقع</h2>
+      <p class="mt-1 text-sm text-blue-100">يمكنك من هنا إدارة المحتوى والأقسام والصفوف.</p>
+     </div>
+     <button type="button" onclick="logoutAdmin()" class="rounded-xl bg-white/15 px-4 py-2 font-bold text-white ring-1 ring-white/25 transition hover:bg-white/25">🚪 تسجيل الخروج</button>
+    </div>
    </div>
-   <div class="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4"><button onclick="openAdminWorkspace('add')" data-template-id="admin-add" type="button" class="canva-button rounded-xl bg-blue-50 px-3 py-3 font-semibold text-blue-700"></button> <button onclick="openAdminWorkspace('edit')" data-template-id="admin-edit" type="button" class="canva-button rounded-xl bg-emerald-50 px-3 py-3 font-semibold text-emerald-700"></button> <button onclick="openAdminWorkspace('delete')" data-template-id="admin-delete" type="button" class="canva-button rounded-xl bg-rose-50 px-3 py-3 font-semibold text-rose-700"></button> <button onclick="openAdminWorkspace('manage')" data-template-id="admin-manage" type="button" class="canva-button rounded-xl bg-amber-50 px-3 py-3 font-semibold text-amber-700"></button>
+   <div class="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <button onclick="openAdminWorkspace('add')" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-blue-100 text-blue-700">➕</span><strong class="text-blue-950">إضافة محتوى</strong><span class="text-xs text-slate-500">إضافة درس أو فيديو أو رابط</span>
+    </button>
+    <button onclick="openAdminWorkspace('edit')" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-emerald-100 text-emerald-700">✏️</span><strong class="text-blue-950">تعديل المحتوى</strong><span class="text-xs text-slate-500">تحديث المحتوى الموجود</span>
+    </button>
+    <button onclick="openAdminWorkspace('delete')" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-rose-100 text-rose-700">🗑️</span><strong class="text-blue-950">حذف المحتوى</strong><span class="text-xs text-slate-500">حذف المحتوى بعد التأكيد</span>
+    </button>
+    <button onclick="openAdminWorkspace('manage')" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-amber-100 text-amber-700">⚙️</span><strong class="text-blue-950">إدارة الأقسام والصفوف</strong><span class="text-xs text-slate-500">إضافة وتعديل وتنظيم الهيكل</span>
+    </button>
+   </div>
+   <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
+    <strong>🔒 حالة الإدارة:</strong> تم تسجيل الدخول بنجاح. أدوات الإدارة متاحة لك فقط.
    </div>
   </section><!-- Admin Workspace -->
   <section id="admin-workspace" class="mx-auto mb-10 hidden w-full max-w-7xl px-4">
@@ -913,6 +945,59 @@
     // ============ DATA SDK INIT ============
     let dataReady = false;
 
+    // Local text fallback: keeps the public page readable when the Canva content layer is delayed or unavailable.
+    const DEFAULT_TEXTS = {
+      'nav-logo-text':'رياضيات بلاد الشهوم',
+      'hero-title':'مرحبًا بكم في موقع رياضيات بلاد الشهوم',
+      'hero-desc':'منصة تعليمية شاملة لمادة الرياضيات تقدم موارد تعليمية متنوعة لجميع الصفوف الدراسية من الخامس حتى الثاني عشر.',
+      'sections-title':'أقسام الموقع',
+      'didyouknow-title':'هل تعلم؟',
+      'didyouknow-text':'الرياضيات هي لغة الكون؛ فهي تساعدنا على تفسير الأرقام والمعادلات وتنمي التفكير المنطقي ومهارات حل المشكلات.',
+      'whyus-title':'لماذا موقع رياضيات بلاد الشهوم؟',
+      'whyus-1-text':'تعلم منظم وموارد تعليمية متنوعة',
+      'whyus-2-text':'دعم للمعلم والطالب',
+      'whyus-3-text':'تعلم ذكي ومحتوى متجدد',
+      'followus-title':'تابع جديد الموقع',
+      'followus-text':'نحرص على تطوير المحتوى وإضافة موارد تعليمية مفيدة باستمرار.',
+      'home-return-label':'العودة إلى الرئيسية',
+      'breadcrumb-home':'الرئيسية',
+      'choose-grade-title':'اختر الصف الدراسي',
+      'banner-desc':'اختر الصف للوصول إلى الدروس والملخصات والأنشطة والاختبارات والموارد التعليمية.',
+      'back-btn-label':'العودة إلى الصفوف',
+      'detail-banner-title':'موارد الرياضيات',
+      'detail-banner-desc':'اختر نوع المحتوى الذي تريد الوصول إليه.',
+      'cat-lessons-text':'الدروس',
+      'cat-downloads-text':'الملخصات',
+      'cat-videos-text':'فيديوهات تعليمية',
+      'cat-links-text':'روابط مفيدة',
+      'cat-tests-text':'الاختبارات',
+      'cat-presentations-text':'العروض التقديمية',
+      'cat-activities-text':'أنشطة وتدريبات',
+      'workspace-title':'المحتوى',
+      'workspace-empty':'مساحة فارغة جاهزة لإضافة المحتوى.',
+      'assistant-title':'مساعد الرياضيات المدعوم بالذكاء الاصطناعي',
+      'assistant-subtitle':'اسأل عن الرياضيات أو اطلب العثور على محتوى تعليمي مناسب.',
+      'assistant-status':'جاهز للمساعدة',
+      'assistant-new-chat':'محادثة جديدة',
+      'assistant-attach-label':'إرفاق',
+      'assistant-send-label':'إرسال',
+      'professional-banner-desc':'موارد وأدوات تساعد المعلمين على التطوير المهني وتحسين الممارسات التعليمية.',
+      'admin-tools-title':'لوحة إدارة الموقع',
+      'admin-tools-desc':'إدارة المحتوى والأقسام والصفوف من مكان واحد.',
+      'admin-logout-button':'🚪 تسجيل الخروج',
+      'footer-text':'جميع الحقوق محفوظة © موقع رياضيات بلاد الشهوم – 2026',
+      'footer-credit':'تصميم وبرمجة الموقع التعليمية'
+    };
+    function applyLocalTextFallback() {
+      Object.entries(DEFAULT_TEXTS).forEach(([id, text]) => {
+        const el = document.querySelector(`[data-template-id="${id}"]`);
+        if (el && (!el.textContent || !el.textContent.trim())) el.textContent = text;
+      });
+      const title = document.getElementById('section-page-title');
+      if (title && !title.textContent.trim()) title.textContent = 'أعمال الفصل الدراسي الأول';
+    }
+    applyLocalTextFallback();
+
     // Paint the seven local defaults before any SDK callback; an empty callback must never blank the homepage.
     renderHomeSections();
     renderNavLinks();
@@ -962,10 +1047,19 @@
       }
     })();
 
+
+    window.addEventListener('error', function(event) {
+      console.error('[رياضيات بلاد الشهوم] Client error:', event.error || event.message);
+      applyLocalTextFallback();
+      renderHomeSections();
+    });
+
+    window.addEventListener('unhandledrejection', function(event) {
+      console.error('[رياضيات بلاد الشهوم] Unhandled promise rejection:', event.reason);
+    });
+
     // ============ UTILITY ============
     function escapeHtml(value) { return String(value || '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char])); }
   </script>
  </body>
 </html>
-index.html
-HTML
