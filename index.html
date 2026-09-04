@@ -32,6 +32,9 @@
     .achievement-rank { display:inline-flex; min-width:44px; height:44px; align-items:center; justify-content:center; border-radius:999px; background:#f59e0b; color:#fff; font-weight:800; box-shadow:0 6px 15px rgba(245,158,11,.25); }
     #home-sections-grid { min-height: 120px; }
     #home-sections-grid:empty::before { content:'جارٍ تجهيز أقسام الموقع...'; display:block; grid-column:1/-1; text-align:center; color:#64748b; padding:2rem; }
+    .public-stat-card { border:1px solid #e2e8f0; background:#fff; border-radius:1.5rem; padding:1.25rem; box-shadow:0 8px 24px rgba(15,23,42,.06); }
+    .public-stat-bar { height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
+    .public-stat-bar > span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#2563eb,#7c3aed); transition:width .6s ease; }
   </style>
   <script src="/_sdk/b3bf9e8ac58e6ad6.data_sdk.js" type="text/javascript" integrity="sha512-otc1u9NYq9Ms5Jt//7vmhrrqR5CLPr8Jdgs6741gqniClfLMcfmC+jK/cKuQdhLv6G0esJ/FzaMS9tv0T/vj/Q=="></script>
   <script src="/_sdk/a27879be4562f807.resizing_sdk.js" type="text/javascript" integrity="sha512-trcxRwz+QLrzK0Dqg95xqVRryR7WtWui2YopXyzOIr3WMde3j/xCRgT63/b/EAg7klDsAOuHzoRgoryhwm8QFw=="></script>
@@ -43,6 +46,7 @@
       <i data-lucide="square-root" class="text-white w-5 h-5"></i>
      </div><span data-template-id="nav-logo-text" class="canva-text font-bold text-blue-900 text-sm md:text-base"></span> </a>
     <div id="nav-sections-links" class="hidden lg:flex items-center gap-4 text-sm font-semibold text-gray-700"><a href="#home" onclick="navigateTo('home')" class="hover:text-blue-600 transition">الرئيسية</a>
+     <a href="#stats" onclick="navigateTo('stats'); return false;" class="hover:text-blue-600 transition">📊 الإحصاءات</a>
     </div><button type="button" onclick="openAdminModal()" id="admin-open-button" class="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold shadow-md transition-all duration-200">🔐 دخول الإدارة</button>
    </div>
   </nav><!-- ===== HOME PAGE ===== -->
@@ -263,6 +267,21 @@
     <div class="mb-8 text-center"><h2 class="text-2xl font-extrabold text-blue-950">🌟 نفخر بإنجازات طالباتنا</h2><p class="mt-2 text-slate-500">صفحة تكريمية توثق أسماء الطالبات ومراكزهن وصورهن.</p></div>
     <div id="achievements-grid" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></div>
     <p id="achievements-empty" class="hidden py-12 text-center text-slate-500">لم تتم إضافة مجيدات الرياضيات بعد.</p>
+   </main>
+  </div><!-- ===== PUBLIC STATISTICS PAGE ===== -->
+  <div id="page-stats" class="page-view">
+   <div class="max-w-7xl mx-auto px-4 pt-4"><a href="#home" onclick="navigateTo('home')" class="inline-flex items-center gap-2 rounded-xl bg-blue-900 px-4 py-2 text-sm font-semibold text-white shadow-sm"><i data-lucide="arrow-right" class="w-4 h-4"></i> العودة إلى الرئيسية</a></div>
+   <section class="relative overflow-hidden bg-gradient-to-l from-blue-950 via-blue-800 to-violet-700 py-14 text-center text-white">
+    <div class="absolute -left-8 -bottom-8 text-9xl opacity-10">📊</div><div class="absolute right-8 top-2 text-8xl opacity-10">📈</div>
+    <div class="relative z-10 mx-auto max-w-3xl px-4"><div class="mb-3 text-5xl">📊</div><h1 class="text-3xl font-extrabold md:text-4xl">إحصاءات الموقع</h1><p class="mt-3 text-white/90">مؤشرات حقيقية ومباشرة من قاعدة بيانات موقع رياضيات بلاد الشهوم.</p></div>
+   </section>
+   <main class="mx-auto max-w-7xl px-4 py-12">
+    <div id="public-stats-status" class="mb-6 hidden rounded-2xl px-5 py-4 text-center font-semibold"></div>
+    <div id="public-stats-cards" class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5"></div>
+    <div class="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+     <section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><h2 class="mb-5 text-xl font-extrabold text-blue-950">📈 المؤشرات البيانية</h2><div id="public-stats-chart" class="space-y-5"></div></section>
+     <section class="rounded-3xl border border-blue-100 bg-blue-50/50 p-6 shadow-sm"><h2 class="mb-4 text-xl font-extrabold text-blue-950">ℹ️ حول الإحصاءات</h2><p class="leading-8 text-slate-600">تعرض هذه الصفحة الأرقام المسجلة فعليًا في قاعدة بيانات الموقع. لا يتم إنشاء أرقام افتراضية للزيارات أو المحتوى.</p><div class="mt-5 rounded-2xl bg-white p-4 text-sm text-slate-600"><strong class="text-blue-900">آخر تحديث:</strong> <span id="public-stats-updated">—</span></div><button type="button" onclick="renderPublicStatistics()" class="mt-5 rounded-xl bg-blue-600 px-5 py-3 font-bold text-white hover:bg-blue-700">🔄 تحديث الإحصاءات</button></section>
+    </div>
    </main>
   </div><!-- Admin Modal -->
   <div id="admin-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-slate-950/60 px-4" role="dialog" aria-modal="true">
@@ -522,6 +541,7 @@
       if (page === 'semester1') showGrades();
       if (page === 'professional') renderProfessionalContent();
       if (page === 'generic-section') renderGenericSection();
+      if (page === 'stats') renderPublicStatistics();
       window.scrollTo(0, 0);
     }
 
@@ -646,6 +666,62 @@
         cardsContainer.innerHTML = '';
       }
       ws.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // ============ PUBLIC STATISTICS & VISIT TRACKING ============
+    async function trackRealVisit() {
+      try {
+        const key = 'mathShuhumVisitTracked';
+        if (sessionStorage.getItem(key) === '1') return;
+        const device = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+        const response = await fetch('/api/stats/visit', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ page_path: window.location.pathname || '/', referrer: document.referrer || '', device_type: device })
+        });
+        if (response.ok) sessionStorage.setItem(key, '1');
+      } catch (error) {
+        console.warn('[رياضيات بلاد الشهوم] تعذر تسجيل الزيارة:', error);
+      }
+    }
+
+    function setPublicStatsStatus(message, ok = true) {
+      const el = document.getElementById('public-stats-status');
+      if (!el) return;
+      el.textContent = message;
+      el.className = `mb-6 rounded-2xl px-5 py-4 text-center font-semibold ${ok ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`;
+      el.classList.remove('hidden');
+    }
+
+    async function renderPublicStatistics() {
+      const cards = document.getElementById('public-stats-cards');
+      const chart = document.getElementById('public-stats-chart');
+      const updated = document.getElementById('public-stats-updated');
+      if (!cards || !chart) return;
+      cards.innerHTML = '<div class="public-stat-card sm:col-span-2 lg:col-span-5 text-center text-slate-500">جارٍ تحميل الإحصاءات...</div>';
+      try {
+        const response = await fetch('/api/stats/public', { method:'GET', headers:{'Accept':'application/json'}, cache:'no-store' });
+        const data = await response.json();
+        if (!response.ok || !data.success || !data.stats) throw new Error(data.error || 'تعذر تحميل الإحصاءات.');
+        const stats = data.stats;
+        const items = [
+          ['الزيارات', Number(stats.visits || 0), '👁️'],
+          ['المحتويات', Number(stats.content || 0), '📚'],
+          ['مجيدات الرياضيات', Number(stats.achievements || 0), '🏆'],
+          ['الأقسام', Number(stats.sections || 0), '📁'],
+          ['الصفوف', Number(stats.grades || 0), '🎓']
+        ];
+        cards.innerHTML = items.map(([label,value,icon]) => `<div class="public-stat-card text-center"><div class="text-3xl">${icon}</div><div class="mt-3 text-3xl font-extrabold text-blue-950">${value.toLocaleString('ar-OM')}</div><div class="mt-1 font-bold text-slate-600">${label}</div></div>`).join('');
+        const max = Math.max(1, ...items.map(x => x[1]));
+        chart.innerHTML = items.map(([label,value,icon]) => { const width = Math.max(2, Math.round((value/max)*100)); return `<div><div class="mb-2 flex items-center justify-between gap-3"><span class="font-bold text-slate-700">${icon} ${label}</span><strong class="text-blue-900">${value.toLocaleString('ar-OM')}</strong></div><div class="public-stat-bar" aria-label="${escapeHtml(label)}"><span style="width:${width}%"></span></div></div>`; }).join('');
+        if (updated) updated.textContent = new Date().toLocaleString('ar-OM', { dateStyle:'medium', timeStyle:'short' });
+        setPublicStatsStatus('تم تحميل الإحصاءات الحقيقية بنجاح.');
+      } catch (error) {
+        cards.innerHTML = '';
+        chart.innerHTML = '<p class="text-center text-rose-600">تعذر تحميل البيانات حاليًا.</p>';
+        setPublicStatsStatus(error.message || 'تعذر تحميل الإحصاءات.', false);
+      }
     }
 
     // ============ PROFESSIONAL / GENERIC SECTION ============
@@ -1309,6 +1385,7 @@
     renderHomeSections();
     renderNavLinks();
     renderAchievements();
+    trackRealVisit();
 
     // The SDK callback is defined before initialization and is the only state updater.
     function handleDataChanged(data) {
