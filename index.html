@@ -603,7 +603,8 @@
       if (!nav) return;
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       nav.innerHTML = '<a href="#home" onclick="navigateTo(\'home\')" class="hover:text-blue-600 transition">الرئيسية</a>' +
-        sections.slice(0, 7).map(sec => `<a href="#" onclick="navigateToSection('${escapeHtml(sec.grade)}'); return false;" class="hover:text-blue-600 transition">${escapeHtml(sec.title)}</a>`).join('');
+        sections.slice(0, 7).map(sec => `<a href="#" onclick="navigateToSection('${escapeHtml(sec.grade)}'); return false;" class="hover:text-blue-600 transition">${escapeHtml(sec.title)}</a>`).join('') +
+        '<a href="#stats" onclick="navigateTo(\'stats\'); return false;" class="hover:text-blue-600 transition">📊 الإحصاءات</a>';
     }
 
     // ============ GRADES VIEW ============
