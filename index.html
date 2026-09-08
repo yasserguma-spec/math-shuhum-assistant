@@ -448,9 +448,12 @@
 
     // ============ DATA ============
     let allRecords = [];
-    let siteSections = []; // records with section === '__section__'
-    let siteGrades = [];   // records with section === '__grade__'
-    let contentRecords = []; // actual content
+    let siteSections = []; // Neon sections normalized to the legacy UI shape
+    let siteGrades = [];   // Neon grades normalized to the legacy UI shape
+    let contentRecords = []; // Neon content
+    let achievementRecords = []; // Neon achievements
+    let databaseLoaded = false;
+    let databaseLoading = false;
 
     // Icons and colors for sections (by index fallback)
     const sectionIcons = ['book-open','notebook-pen','lightbulb','library','star','bot','briefcase','folder','layers'];
@@ -468,61 +471,138 @@
     let sectionMigrationStarted = false;
 
     function categorizeRecords(data) {
-      // Keep the last valid dataset when a transient SDK update is empty or malformed.
       const isValidDataset = Array.isArray(data) && data.every(record => record && typeof record === 'object');
       if (isValidDataset && data.length) allRecords = data;
       const sourceRecords = Array.isArray(allRecords) ? allRecords : [];
-      // The homepage and admin panel intentionally derive sections from this same normalized array.
-      // Empty SDK updates are diagnostic events, not permission to erase the current section state.
-      // Read the same records used by administration; support both the current markers and legacy record_type rows.
       siteSections = sourceRecords.filter(r => r.section === '__section__' || r.record_type === 'section' || (r.section_id && r.name && !r.title))
-        .map(r => ({ ...r, grade: r.grade || r.section_id, title: r.title || r.name, content_type: r.content_type || r.icon, link: r.link || r.color_class }))
+        .map(r => ({ ...r, grade: r.grade || r.section_id || r.slug, title: r.title || r.name, content_type: r.content_type || r.icon, link: r.link || r.color_class || r.color }))
         .filter(r => r.grade && r.title)
         .sort((a,b) => (Number(a.description || a.sort_order)||0) - (Number(b.description || b.sort_order)||0));
       siteGrades = sourceRecords.filter(r => r.section === '__grade__' || r.record_type === 'grade')
-        .map(r => ({ ...r, grade: r.grade || r.grade_id, title: r.title || r.name, content_type: r.content_type || r.icon }))
+        .map(r => ({ ...r, grade: r.grade || r.grade_id || r.slug, title: r.title || r.name, content_type: r.content_type || r.icon }))
         .sort((a,b) => (Number(a.description || a.sort_order)||0) - (Number(b.description || b.sort_order)||0));
       contentRecords = sourceRecords.filter(r => r.section !== '__section__' && r.section !== '__grade__' && r.record_type !== 'section' && r.record_type !== 'grade' && r.record_type !== 'achievement')
         .map(r => ({ ...r, section: r.section || r.section_id }));
-      if (!siteSections.length) console.error('[رياضيات بلاد الشهوم] لم تُقرأ سجلات الأقسام. عدد السجلات:', allRecords.length);
     }
 
-    async function migrateSectionsIfMissing(data) {
-      if (sectionMigrationStarted) return;
-      sectionMigrationStarted = true;
-      const stored = Array.isArray(data) ? data : allRecords;
-      const legacyIds = { semester1: 'term1', semester2: 'term2', 'teaching-aids': 'learning-tools', 'math-champions': 'math-achievements', 'ai-math-assistant': 'math-assistant', professional: 'professional-development' };
-      const existingIds = new Set(siteSections.map(r => r.grade).filter(Boolean));
-      // Normalize legacy section IDs in place so existing rows remain linked and intact.
-      for (const record of stored) {
-        const oldId = (record.section === '__section__' || record.record_type === 'section') ? (record.grade || record.section_id) : record.section;
-        const newId = legacyIds[oldId];
-        if (!newId) continue;
-        if (record.section === '__section__' || record.record_type === 'section') {
-          const result = await window.dataSdk.update({ ...record, grade: newId });
-          if (!result.isOk) { sectionMigrationStarted = false; return; }
-        } else if (record.section === oldId) {
-          const result = await window.dataSdk.update({ ...record, section: newId });
-          if (!result.isOk) { sectionMigrationStarted = false; return; }
-        }
-        existingIds.delete(oldId);
-        existingIds.add(newId);
+    function normalizeSectionRecord(row, index) {
+      return {
+        __backendId: String(row.id),
+        id: row.id,
+        title: row.name || row.title || '',
+        name: row.name || row.title || '',
+        grade: row.slug || row.grade || row.section_id || '',
+        section_id: row.id,
+        content_type: row.icon || row.content_type || sectionIcons[index % sectionIcons.length],
+        link: row.color || row.link || sectionColors[index % sectionColors.length],
+        description: String(row.sort_order ?? index),
+        sort_order: Number(row.sort_order ?? index),
+        is_active: row.is_active !== false,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        record_type: 'section'
+      };
+    }
+
+    function normalizeGradeRecord(row, index) {
+      return {
+        __backendId: String(row.id),
+        id: row.id,
+        title: row.name || row.title || '',
+        name: row.name || row.title || '',
+        grade: row.slug || row.grade || row.grade_id || '',
+        grade_id: row.id,
+        content_type: row.icon || row.content_type || gradeIcons[index % gradeIcons.length],
+        description: String(row.sort_order ?? index),
+        sort_order: Number(row.sort_order ?? index),
+        grade_number: row.grade_number,
+        is_active: row.is_active !== false,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        record_type: 'grade'
+      };
+    }
+
+    function normalizeAchievementRecord(row) {
+      return {
+        __backendId: String(row.id),
+        id: row.id,
+        title: row.student_name || '',
+        student_name: row.student_name || '',
+        description: row.description || '',
+        section: 'math-achievements',
+        grade: row.grade_slug || row.grade || '',
+        grade_id: row.grade_id ?? null,
+        grade_name: row.grade_name || '',
+        content_type: 'مجيدة',
+        link: String(row.rank || ''),
+        rank: Number(row.rank || 0),
+        image_url: row.image_url || '',
+        is_active: row.is_active !== false,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        record_type: 'achievement'
+      };
+    }
+
+    async function loadDatabaseData(showError = false) {
+      if (databaseLoading) return;
+      databaseLoading = true;
+      try {
+        const [sectionsResponse, gradesResponse, contentResponse, achievementsResponse] = await Promise.all([
+          fetch('/api/sections', { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+          fetch('/api/grades', { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+          fetch('/api/content', { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+          fetch('/api/achievements', { headers: { Accept: 'application/json' }, cache: 'no-store' })
+        ]);
+
+        const [sectionsData, gradesData, contentData, achievementsData] = await Promise.all([
+          sectionsResponse.json(),
+          gradesResponse.json(),
+          contentResponse.json(),
+          achievementsResponse.json()
+        ]);
+
+        if (!sectionsResponse.ok || !sectionsData.success) throw new Error(sectionsData.error || 'تعذر تحميل الأقسام من قاعدة البيانات.');
+        if (!gradesResponse.ok || !gradesData.success) throw new Error(gradesData.error || 'تعذر تحميل الصفوف من قاعدة البيانات.');
+        if (!contentResponse.ok || !contentData.success) throw new Error(contentData.error || 'تعذر تحميل المحتوى من قاعدة البيانات.');
+        if (!achievementsResponse.ok || !achievementsData.success) throw new Error(achievementsData.error || 'تعذر تحميل المجيدات من قاعدة البيانات.');
+
+        siteSections = (Array.isArray(sectionsData.sections) ? sectionsData.sections : [])
+          .map(normalizeSectionRecord)
+          .filter(row => row.is_active !== false);
+
+        siteGrades = (Array.isArray(gradesData.grades) ? gradesData.grades : [])
+          .map(normalizeGradeRecord)
+          .filter(row => row.is_active !== false);
+
+        contentRecords = (Array.isArray(contentData.content) ? contentData.content : [])
+          .map(item => ({ ...item, __backendId: String(item.__backendId ?? item.id), section: item.section || item.section_slug || item.section_id || '', grade: item.grade || item.grade_slug || item.grade_id || '' }))
+          .filter(item => item.is_active !== false);
+
+        achievementRecords = (Array.isArray(achievementsData.achievements) ? achievementsData.achievements : [])
+          .map(normalizeAchievementRecord)
+          .filter(item => item.is_active !== false);
+
+        allRecords = [...siteSections, ...siteGrades, ...contentRecords, ...achievementRecords];
+        databaseLoaded = true;
+        dataReady = true;
+
+        renderHomeSections();
+        renderNavLinks();
+        renderAchievements();
+        renderGradesGrid();
+        if (document.getElementById('page-professional')?.classList.contains('active')) renderProfessionalContent();
+        if (document.getElementById('page-generic-section')?.classList.contains('active')) renderGenericSection();
+        if (!document.getElementById('content-list-panel')?.classList.contains('hidden')) renderManagedContent(currentAdminMode);
+        if (!document.getElementById('achievement-workspace')?.classList.contains('hidden')) renderAchievementAdminList();
+        if (!document.getElementById('statistics-workspace')?.classList.contains('hidden')) renderAdminStatistics();
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Database load error:', error);
+        if (showError) alert(error.message || 'تعذر تحميل بيانات الموقع من قاعدة البيانات.');
+      } finally {
+        databaseLoading = false;
       }
-      stored.filter(r => r.record_type === 'section' || r.section === '__section__').forEach(r => {
-        if (r.grade || r.section_id) existingIds.add(r.grade || r.section_id);
-      });
-      for (let i = 0; i < defaultSectionRecords.length; i++) {
-        const [title, id, icon, color] = defaultSectionRecords[i];
-        // Add only missing defaults; existing sections and content are never deleted.
-        if (existingIds.has(id)) continue;
-        const result = await window.dataSdk.create({
-          title, description: String(i), section: '__section__', grade: id,
-          content_type: icon, link: color, image_url: '', created_at: new Date().toISOString()
-        });
-        if (!result.isOk) { sectionMigrationStarted = false; return; }
-        existingIds.add(id);
-      }
-      sectionMigrationStarted = false;
     }
 
     function getSectionName(sectionId) {
@@ -575,6 +655,7 @@
     function handleHash() {
       const hash = window.location.hash.replace('#', '');
       if (hash === 'home' || !hash) navigateTo('home');
+      else if (hash === 'stats') navigateTo('stats');
     }
     window.addEventListener('hashchange', handleHash);
 
@@ -1026,11 +1107,24 @@
     }
 
     async function confirmDelete(backendId) {
-      const record = allRecords.find(r => r.__backendId === backendId);
+      const record = contentRecords.find(r => r.__backendId === backendId);
       if (!record) return;
-      const r = await window.dataSdk.delete(record);
-      if (!r.isOk) { showStatus('تعذر الحذف', false); return; }
-      showStatus('تم الحذف بنجاح');
+      if (!confirm(`هل تريد حذف المحتوى "${record.title || ''}"؟`)) return;
+      try {
+        const response = await fetch('/api/content', {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ id: record.id || backendId })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر حذف المحتوى.');
+        showStatus('تم حذف المحتوى بنجاح');
+        await loadDatabaseData();
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Content delete error:', error);
+        showStatus(error.message || 'تعذر الحذف', false);
+      }
     }
 
     function showStatus(msg, ok = true) {
@@ -1048,35 +1142,48 @@
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       const sec = sections.find(s => s.grade === sectionId);
       const isPro = sec && sec.title.includes('التنمية المهنية');
-      const record = {
-        title: document.getElementById('admin-content-title').value,
-        description: document.getElementById('admin-content-description').value,
+      const payload = {
+        title: document.getElementById('admin-content-title').value.trim(),
+        description: document.getElementById('admin-content-description').value.trim(),
         section: sectionId,
         grade: isPro ? '' : document.getElementById('admin-content-grade').value,
         content_type: document.getElementById('admin-content-type').value,
-        link: document.getElementById('admin-content-link').value,
-        image_url: document.getElementById('admin-content-image').value,
-        created_at: new Date().toISOString()
+        link: document.getElementById('admin-content-link').value.trim(),
+        image_url: document.getElementById('admin-content-image').value.trim(),
+        is_active: true
       };
-      let result;
-      if (editingRecord) {
-        result = await window.dataSdk.update({ ...editingRecord, ...record });
-      } else {
-        result = await window.dataSdk.create(record);
+      try {
+        const method = editingRecord ? 'PUT' : 'POST';
+        if (editingRecord) payload.id = editingRecord.id || editingRecord.__backendId;
+        const response = await fetch('/api/content', {
+          method,
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر حفظ المحتوى.');
+        showStatus(editingRecord ? 'تم تعديل المحتوى بنجاح' : 'تم حفظ المحتوى بنجاح');
+        editingRecord = null;
+        document.getElementById('content-form').reset();
+        handleSectionChange();
+        await loadDatabaseData();
+        if (currentAdminMode === 'add') renderManagedContent('edit');
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Content save error:', error);
+        showStatus(error.message || 'تعذر الحفظ', false);
+      } finally {
+        btn.disabled = false;
       }
-      btn.disabled = false;
-      if (!result.isOk) { showStatus('تعذر الحفظ', false); return; }
-      showStatus(editingRecord ? 'تم التعديل' : 'تم الحفظ');
-      editingRecord = null;
-      document.getElementById('content-form').reset();
-      handleSectionChange();
     });
 
     // ============ MATH ACHIEVEMENTS ============
     let editingAchievement = null;
 
     function getAchievementRecords() {
-      return allRecords.filter(r => r.record_type === 'achievement' || (r.section === 'math-achievements' && r.content_type === 'مجيدة')).sort((a,b) => Number(a.link || 99) - Number(b.link || 99));
+      return Array.isArray(achievementRecords)
+        ? [...achievementRecords].sort((a,b) => Number(a.rank || a.link || 99) - Number(b.rank || b.link || 99) || new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        : [];
     }
 
     function setAchievementStatus(message, ok = true) {
@@ -1105,11 +1212,25 @@
       if (status) status.classList.add('hidden');
     }
 
+    function editAchievement(backendId) {
+      const item = getAchievementRecords().find(r => r.__backendId === backendId);
+      if (!item) return;
+      editingAchievement = item;
+      document.getElementById('achievement-student-name').value = item.student_name || item.title || '';
+      populateAchievementGradeSelect();
+      document.getElementById('achievement-grade').value = item.grade || '';
+      document.getElementById('achievement-rank').value = String(item.rank || item.link || '');
+      document.getElementById('achievement-image-url').value = item.image_url || '';
+      document.getElementById('achievement-image-file').value = '';
+      document.getElementById('achievement-save-button').textContent = 'تحديث المجيدة';
+      document.getElementById('achievement-status').classList.add('hidden');
+    }
+
     function renderAchievementAdminList() {
       const list = document.getElementById('achievement-admin-list');
       if (!list) return;
       const records = getAchievementRecords();
-      list.innerHTML = records.length ? records.map(item => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-white p-4"><div class="flex items-center gap-3">${item.image_url ? `<img src="${escapeHtml(item.image_url)}" class="h-14 w-14 rounded-full object-cover border-2 border-amber-400" alt="">` : '<div class="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-xl">🏆</div>'}<div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getAvailableGrades().find(g => g.grade === item.grade)?.title || item.grade || 'عام')} · المركز ${escapeHtml(item.link || '')}</p></div></div><button type="button" onclick="deleteAchievement('${escapeHtml(item.__backendId)}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button></div>`).join('') : '<p class="rounded-xl bg-white p-5 text-center text-slate-500">لا توجد مجيدات مسجلات حتى الآن.</p>';
+      list.innerHTML = records.length ? records.map(item => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-rose-100 bg-white p-4"><div class="flex items-center gap-3">${item.image_url ? `<img src="${escapeHtml(item.image_url)}" class="h-14 w-14 rounded-full object-cover border-2 border-amber-400" alt="">` : '<div class="h-14 w-14 rounded-full bg-amber-100 flex items-center justify-center text-xl">🏆</div>'}<div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(item.grade_name || getAvailableGrades().find(g => g.grade === item.grade)?.title || item.grade || 'عام')} · المركز ${escapeHtml(item.rank || item.link || '')}</p></div></div><div class="flex gap-2"><button type="button" onclick="editAchievement('${escapeHtml(item.__backendId)}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">تعديل</button><button type="button" onclick="deleteAchievement('${escapeHtml(item.__backendId)}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button></div></div>`).join('') : '<p class="rounded-xl bg-white p-5 text-center text-slate-500">لا توجد مجيدات مسجلات حتى الآن.</p>';
     }
 
     async function uploadAchievementImage(file) {
@@ -1122,14 +1243,25 @@
     }
 
     async function deleteAchievement(backendId) {
-      const record = allRecords.find(r => r.__backendId === backendId);
+      const record = getAchievementRecords().find(r => r.__backendId === backendId);
       if (!record) return;
       if (!confirm(`هل تريد حذف مجيدة الرياضيات "${record.title || ''}"؟`)) return;
-      const result = await window.dataSdk.delete(record);
-      if (!result.isOk) { setAchievementStatus('تعذر حذف المجيدة.', false); return; }
-      setAchievementStatus('تم حذف المجيدة بنجاح.');
-      renderAchievementAdminList();
-      renderAchievements();
+      try {
+        const response = await fetch('/api/achievements', {
+          method: 'DELETE',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ id: record.id || backendId })
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر حذف المجيدة.');
+        setAchievementStatus('تم حذف المجيدة بنجاح.');
+        await loadDatabaseData();
+        renderAchievementAdminList();
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Achievement delete error:', error);
+        setAchievementStatus(error.message || 'تعذر حذف المجيدة.', false);
+      }
     }
 
     document.getElementById('achievement-form').addEventListener('submit', async function(e) {
@@ -1141,17 +1273,43 @@
       const imageUrlInput = document.getElementById('achievement-image-url').value.trim();
       const file = document.getElementById('achievement-image-file').files[0];
       if (!name || !grade || !rank) { setAchievementStatus('يرجى إدخال اسم الطالبة والصف والمركز.', false); return; }
-      btn.disabled = true; btn.textContent = 'جارٍ الحفظ...';
+      btn.disabled = true; btn.textContent = editingAchievement ? 'جارٍ التحديث...' : 'جارٍ الحفظ...';
       try {
         let imageUrl = imageUrlInput;
-        if (file) { if (file.size > 4*1024*1024) throw new Error('حجم الصورة أكبر من 4MB.'); imageUrl = await uploadAchievementImage(file); }
-        const record = {title:name, description:'مجيدة الرياضيات', section:'math-achievements', grade, content_type:'مجيدة', link:rank, image_url:imageUrl, record_type:'achievement', created_at:new Date().toISOString()};
-        const result = editingAchievement ? await window.dataSdk.update({...editingAchievement,...record}) : await window.dataSdk.create(record);
-        if (!result.isOk) throw new Error('تعذر حفظ بيانات المجيدة.');
+        if (file) {
+          if (file.size > 4*1024*1024) throw new Error('حجم الصورة أكبر من 4MB.');
+          imageUrl = await uploadAchievementImage(file);
+        }
+        const payload = {
+          student_name: name,
+          grade,
+          rank: Number(rank),
+          description: 'مجيدة الرياضيات',
+          image_url: imageUrl,
+          is_active: true
+        };
+        const method = editingAchievement ? 'PUT' : 'POST';
+        if (editingAchievement) payload.id = editingAchievement.id || editingAchievement.__backendId;
+        const response = await fetch('/api/achievements', {
+          method,
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر حفظ بيانات المجيدة.');
         setAchievementStatus(editingAchievement ? 'تم تحديث بيانات المجيدة بنجاح.' : 'تمت إضافة المجيدة بنجاح.');
-        resetAchievementForm(); renderAchievementAdminList(); renderAchievements();
-      } catch (error) { console.error('[رياضيات بلاد الشهوم] Achievement error:', error); setAchievementStatus(error.message || 'حدث خطأ أثناء حفظ المجيدة.', false); }
-      finally { btn.disabled = false; btn.textContent = 'حفظ المجيدة'; }
+        resetAchievementForm();
+        await loadDatabaseData();
+        renderAchievementAdminList();
+        renderAchievements();
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Achievement error:', error);
+        setAchievementStatus(error.message || 'حدث خطأ أثناء حفظ المجيدة.', false);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'حفظ المجيدة';
+      }
     });
 
     function renderAchievements() {
@@ -1170,30 +1328,39 @@
     }
 
     // ============ ADMIN STATISTICS ============
-    function renderAdminStatistics() {
+    async function renderAdminStatistics() {
       const cards = document.getElementById('admin-stats-cards');
       const sectionsBox = document.getElementById('admin-stats-sections');
       const typesBox = document.getElementById('admin-stats-types');
       const recentBox = document.getElementById('admin-stats-recent');
       if (!cards || !sectionsBox || !typesBox || !recentBox) return;
 
-      const records = Array.isArray(allRecords) ? allRecords : [];
+      if (!databaseLoaded) await loadDatabaseData();
+
+      let publicStats = {};
+      try {
+        const response = await fetch('/api/stats/public', { headers: { Accept: 'application/json' }, cache: 'no-store' });
+        const data = await response.json();
+        if (response.ok && data.success) publicStats = data.stats || {};
+      } catch (_) {}
+
       const sections = Array.isArray(siteSections) ? siteSections : [];
       const grades = Array.isArray(siteGrades) ? siteGrades : [];
       const contents = Array.isArray(contentRecords) ? contentRecords : [];
       const achievements = getAchievementRecords();
+      const visits = Number(publicStats.visits || 0);
 
       const stats = [
-        ['إجمالي السجلات', records.length, 'bg-blue-100 text-blue-700'],
-        ['الأقسام', sections.length, 'bg-emerald-100 text-emerald-700'],
-        ['الصفوف', grades.length, 'bg-amber-100 text-amber-700'],
-        ['المحتويات', contents.length, 'bg-violet-100 text-violet-700'],
-        ['مجيدات الرياضيات', achievements.length, 'bg-rose-100 text-rose-700']
+        ['الزيارات', visits, 'bg-blue-100 text-blue-700'],
+        ['الأقسام', Number(publicStats.sections ?? sections.length), 'bg-emerald-100 text-emerald-700'],
+        ['الصفوف', Number(publicStats.grades ?? grades.length), 'bg-amber-100 text-amber-700'],
+        ['المحتويات', Number(publicStats.content ?? contents.length), 'bg-violet-100 text-violet-700'],
+        ['مجيدات الرياضيات', Number(publicStats.achievements ?? achievements.length), 'bg-rose-100 text-rose-700']
       ];
 
       cards.innerHTML = stats.map(([label, value, cls]) =>
         `<div class="rounded-2xl border border-slate-200 bg-white p-5 text-center shadow-sm">
-          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${cls} text-xl font-extrabold">${value}</div>
+          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl ${cls} text-xl font-extrabold">${Number(value).toLocaleString('ar-OM')}</div>
           <div class="font-bold text-blue-950">${escapeHtml(label)}</div>
         </div>`
       ).join('');
@@ -1210,18 +1377,11 @@
       }));
 
       Object.keys(sectionCounts).forEach(key => {
-        if (!sections.some(sec => sec.grade === key)) {
-          sectionRows.push({ name: getSectionName(key), count: sectionCounts[key] });
-        }
+        if (!sections.some(sec => sec.grade === key)) sectionRows.push({ name: getSectionName(key), count: sectionCounts[key] });
       });
 
       sectionsBox.innerHTML = sectionRows.length
-        ? sectionRows.map(row =>
-          `<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <span class="font-semibold text-slate-700">${escapeHtml(row.name)}</span>
-            <span class="min-w-10 rounded-lg bg-blue-100 px-3 py-1 text-center font-extrabold text-blue-700">${row.count}</span>
-          </div>`
-        ).join('')
+        ? sectionRows.map(row => `<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"><span class="font-semibold text-slate-700">${escapeHtml(row.name)}</span><span class="min-w-10 rounded-lg bg-blue-100 px-3 py-1 text-center font-extrabold text-blue-700">${row.count}</span></div>`).join('')
         : '<p class="text-sm text-slate-500">لا توجد بيانات محتوى بعد.</p>';
 
       const typeCounts = {};
@@ -1229,30 +1389,14 @@
         const key = item.content_type || 'غير محدد';
         typeCounts[key] = (typeCounts[key] || 0) + 1;
       });
-
       const typeRows = Object.entries(typeCounts).sort((a,b) => b[1] - a[1]);
       typesBox.innerHTML = typeRows.length
-        ? typeRows.map(([name, count]) =>
-          `<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <span class="font-semibold text-slate-700">${escapeHtml(name)}</span>
-            <span class="min-w-10 rounded-lg bg-violet-100 px-3 py-1 text-center font-extrabold text-violet-700">${count}</span>
-          </div>`
-        ).join('')
+        ? typeRows.map(([name, count]) => `<div class="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"><span class="font-semibold text-slate-700">${escapeHtml(name)}</span><span class="min-w-10 rounded-lg bg-violet-100 px-3 py-1 text-center font-extrabold text-violet-700">${count}</span></div>`).join('')
         : '<p class="text-sm text-slate-500">لا توجد محتويات بعد.</p>';
 
-      const recent = [...contents].sort((a,b) =>
-        new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
-      ).slice(0, 8);
-
+      const recent = [...contents].sort((a,b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()).slice(0, 8);
       recentBox.innerHTML = recent.length
-        ? recent.map(item =>
-          `<div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
-            <div>
-              <strong class="text-blue-950">${escapeHtml(item.title || 'بدون عنوان')}</strong>
-              <p class="mt-1 text-xs text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || 'محتوى')}</p>
-            </div>
-          </div>`
-        ).join('')
+        ? recent.map(item => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-4 py-3"><div><strong class="text-blue-950">${escapeHtml(item.title || 'بدون عنوان')}</strong><p class="mt-1 text-xs text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || 'محتوى')}</p></div></div>`).join('')
         : '<p class="text-sm text-slate-500">لا توجد محتويات مضافة بعد.</p>';
     }
 
@@ -1260,76 +1404,29 @@
     function showManagementTab(tab) {
       const panel = document.getElementById('management-tab-content');
       const list = tab === 'sections' ? siteSections : siteGrades;
-      const title = tab === 'sections' ? 'إدارة الأقسام' : 'إدارة الصفوف';
-      const kind = tab === 'sections' ? 'section' : 'grade';
-      panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="text-xl font-bold text-blue-950">${title}</h3><button type="button" onclick="addStructureItem('${kind}')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">إضافة ${tab === 'sections' ? 'قسم' : 'صف'}</button></div><p class="mt-2 text-sm text-slate-500">عدّل أو احذف العنصر عند الحاجة.</p><div class="mt-5 grid gap-3">${list.map((item) => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4"><strong class="text-blue-950">${escapeHtml(item.title)}</strong><div class="flex flex-wrap gap-2"><button type="button" onclick="editStructureItem('${kind}','${item.__backendId}')" class="rounded-lg bg-emerald-600 px-3 py-1 font-bold text-white">تعديل</button><button type="button" onclick="deleteStructureItem('${kind}','${item.__backendId}')" class="rounded-lg bg-rose-600 px-3 py-1 font-bold text-white">حذف</button></div></div>`).join('')}</div>`;
+      const title = tab === 'sections' ? 'أقسام الموقع' : 'الصفوف الدراسية';
+      panel.innerHTML = `<div class="flex flex-wrap items-center justify-between gap-3"><h3 class="text-xl font-bold text-blue-950">${title}</h3><span class="rounded-xl bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">متصل بقاعدة Neon</span></div><p class="mt-2 text-sm text-slate-500">هذه البيانات تُقرأ مباشرة من قاعدة بيانات الموقع. إدارة الإضافة والتعديل والحذف للهيكل ستُربط في خطوة مستقلة بعد اكتمال ربط المحتوى.</p><div class="mt-5 grid gap-3">${list.map((item) => `<div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border bg-white p-4"><div><strong class="text-blue-950">${escapeHtml(item.title)}</strong><p class="mt-1 text-xs text-slate-500">${escapeHtml(item.grade || '')}</p></div><span class="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">قراءة فقط</span></div>`).join('')}</div>`;
     }
 
-    function addStructureItem(kind) {
-      const panel = document.getElementById('management-tab-content');
-      const title = kind === 'section' ? 'قسم' : 'صف';
-      panel.insertAdjacentHTML('afterbegin', `<form id="structure-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-blue-50 p-4"><label class="font-semibold text-blue-950" for="structure-name">اسم ${title}<input id="structure-name" required class="mt-1 w-full rounded-xl border p-2" type="text"></label><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" type="submit">حفظ</button><button class="rounded-xl border px-4 py-2" type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')">إلغاء</button></form>`);
-      document.getElementById('structure-form').addEventListener('submit', async function(ev) {
-        ev.preventDefault();
-        const name = document.getElementById('structure-name').value.trim();
-        if (!name) return;
-        const id = kind + '_' + Date.now();
-        const list = kind === 'section' ? siteSections : siteGrades;
-        const sortOrder = list.length;
-        const record = {
-          title: name,
-          description: String(sortOrder),
-          section: kind === 'section' ? '__section__' : '__grade__',
-          grade: id,
-          content_type: kind === 'section' ? sectionIcons[sortOrder % sectionIcons.length] : gradeIcons[sortOrder % gradeIcons.length],
-          link: kind === 'section' ? sectionColors[sortOrder % sectionColors.length] : '',
-          image_url: '',
-          created_at: new Date().toISOString()
-        };
-        const r = await window.dataSdk.create(record);
-        if (!r.isOk) { showStatus('تعذر الحفظ', false); return; }
-        showManagementTab(kind === 'section' ? 'sections' : 'grades');
-      });
+    function addStructureItem() {
+      showStatus('إدارة الأقسام والصفوف مرتبطة حاليًا بالقراءة من Neon فقط. سنربط عمليات الإضافة والتعديل والحذف في الخطوة التالية.', false);
     }
 
-    function editStructureItem(kind, backendId) {
-      const item = allRecords.find(r => r.__backendId === backendId);
-      if (!item) return;
-      const panel = document.getElementById('management-tab-content');
-      const title = kind === 'section' ? 'قسم' : 'صف';
-      panel.insertAdjacentHTML('afterbegin', `<form id="structure-form" class="mb-5 flex flex-wrap items-end gap-3 rounded-2xl bg-blue-50 p-4"><label class="font-semibold text-blue-950" for="structure-name">اسم ${title}<input id="structure-name" required value="${escapeHtml(item.title)}" class="mt-1 w-full rounded-xl border p-2" type="text"></label><button class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white" type="submit">حفظ</button><button class="rounded-xl border px-4 py-2" type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')">إلغاء</button></form>`);
-      document.getElementById('structure-form').addEventListener('submit', async function(ev) {
-        ev.preventDefault();
-        const name = document.getElementById('structure-name').value.trim();
-        if (!name) return;
-        const r = await window.dataSdk.update({ ...item, title: name });
-        if (!r.isOk) { showStatus('تعذر الحفظ', false); return; }
-        showManagementTab(kind === 'section' ? 'sections' : 'grades');
-      });
+    function editStructureItem() {
+      showStatus('إدارة الأقسام والصفوف مرتبطة حاليًا بالقراءة من Neon فقط. سنربط عمليات الإضافة والتعديل والحذف في الخطوة التالية.', false);
     }
 
-    function deleteStructureItem(kind, backendId) {
-      const panel = document.getElementById('management-tab-content');
-      const cards = panel.querySelectorAll('.grid.gap-3 > div');
-      const list = kind === 'section' ? siteSections : siteGrades;
-      const idx = list.findIndex(r => r.__backendId === backendId);
-      const card = cards[idx];
-      if (!card || card.querySelector('.confirm-structure')) return;
-      card.insertAdjacentHTML('beforeend', `<div class="confirm-structure mt-2 rounded-lg bg-rose-50 p-2 text-rose-700">تأكيد الحذف؟ المحتوى المرتبط لن يُحذف. <button type="button" onclick="performStructureDelete('${kind}','${backendId}')" class="font-bold underline">نعم</button> <button type="button" onclick="showManagementTab('${kind === 'section' ? 'sections' : 'grades'}')" class="underline">إلغاء</button></div>`);
+    function deleteStructureItem() {
+      showStatus('إدارة الأقسام والصفوف مرتبطة حاليًا بالقراءة من Neon فقط. سنربط عمليات الإضافة والتعديل والحذف في الخطوة التالية.', false);
     }
 
-    async function performStructureDelete(kind, backendId) {
-      const record = allRecords.find(r => r.__backendId === backendId);
-      if (!record) return;
-      const r = await window.dataSdk.delete(record);
-      if (!r.isOk) { showStatus('تعذر الحذف', false); return; }
-      showManagementTab(kind === 'section' ? 'sections' : 'grades');
+    async function performStructureDelete() {
+      showStatus('إدارة الأقسام والصفوف مرتبطة حاليًا بالقراءة من Neon فقط.', false);
     }
 
-    // ============ DATA SDK INIT ============
+    // ============ NEON DATABASE INIT ============
     let dataReady = false;
 
-    // Local text fallback: keeps the public page readable when the Canva content layer is delayed or unavailable.
     const DEFAULT_TEXTS = {
       'nav-logo-text':'رياضيات بلاد الشهوم',
       'hero-title':'مرحبًا بكم في موقع رياضيات بلاد الشهوم',
@@ -1372,6 +1469,7 @@
       'footer-text':'جميع الحقوق محفوظة © موقع رياضيات بلاد الشهوم – 2026',
       'footer-credit':'تصميم وبرمجة الموقع التعليمية'
     };
+
     function applyLocalTextFallback() {
       Object.entries(DEFAULT_TEXTS).forEach(([id, text]) => {
         const el = document.querySelector(`[data-template-id="${id}"]`);
@@ -1380,60 +1478,16 @@
       const title = document.getElementById('section-page-title');
       if (title && !title.textContent.trim()) title.textContent = 'أعمال الفصل الدراسي الأول';
     }
-    applyLocalTextFallback();
 
-    // Paint the seven local defaults before any SDK callback; an empty callback must never blank the homepage.
+    applyLocalTextFallback();
     renderHomeSections();
     renderNavLinks();
     renderAchievements();
     trackRealVisit();
-
-    // The SDK callback is defined before initialization and is the only state updater.
-    function handleDataChanged(data) {
-      try {
-        categorizeRecords(Array.isArray(data) ? data : []);
-        dataReady = true;
-        renderHomeSections();
-        renderNavLinks();
-        migrateSectionsIfMissing(Array.isArray(data) ? data : allRecords).catch(() => {
-          sectionMigrationStarted = false;
-        });
-        if (document.getElementById('page-professional').classList.contains('active')) renderProfessionalContent();
-        if (document.getElementById('page-generic-section').classList.contains('active')) renderGenericSection();
-        if (document.getElementById('page-math-achievements') && document.getElementById('page-math-achievements').classList.contains('active')) renderAchievements();
-        if (document.getElementById('grades-view') && !document.getElementById('grades-view').classList.contains('hidden')) renderGradesGrid();
-        if (!document.getElementById('management-tabs').classList.contains('hidden')) {
-          const activeTab = siteSections.length ? 'sections' : 'grades';
-          if (!document.getElementById('structure-form')) showManagementTab(activeTab);
-        }
-        if (!document.getElementById('content-list-panel').classList.contains('hidden')) renderManagedContent(currentAdminMode);
-         if (document.getElementById('statistics-workspace') && !document.getElementById('statistics-workspace').classList.contains('hidden')) renderAdminStatistics();
-      } catch (error) {
-        dataReady = true;
-        categorizeRecords([]);
-        renderHomeSections();
-        renderNavLinks();
-      }
-    }
-
     initializeAdminState();
 
-    const dataHandler = { onDataChanged: handleDataChanged };
-
-    (async function initDataSource() {
-      if (!window.dataSdk) {
-        dataReady = true;
-        renderHomeSections();
-        return;
-      }
-      const result = await window.dataSdk.init(dataHandler);
-      if (!result || !result.isOk) {
-        dataReady = true;
-        categorizeRecords([]);
-        renderHomeSections();
-        renderNavLinks();
-      }
-    })();
+    // تحميل الموقع من Neon مباشرة. Data SDK لا يُستخدم كمصدر للبيانات بعد الآن.
+    loadDatabaseData().catch(error => console.error('[رياضيات بلاد الشهوم] Initial database load failed:', error));
 
 
     window.addEventListener('error', function(event) {
