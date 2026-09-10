@@ -615,6 +615,8 @@
     // ============ NAVIGATION ============
     let currentSectionId = '';
     let currentGrade = '';
+    let currentSectionGrades = [];
+    let currentSectionStructureLoaded = false;
 
     function navigateTo(page) {
       document.querySelectorAll('.page-view').forEach(el => el.classList.remove('active'));
@@ -627,30 +629,68 @@
       window.scrollTo(0, 0);
     }
 
-    function navigateToSection(sectionId) {
+    async function navigateToSection(sectionId) {
       currentSectionId = sectionId;
+      currentGrade = '';
+      currentSectionGrades = [];
+      currentSectionStructureLoaded = false;
+
       const sec = siteSections.find(r => r.grade === sectionId);
       const name = sec ? sec.title : sectionId;
-      // Check if it has grades (content with this section that has grade field)
-      const hasGrades = contentRecords.some(r => r.section === sectionId && r.grade);
+
       if (sectionId === 'math-assistant') {
         navigateTo('math-assistant');
         initAssistantChat();
         return;
       }
+
       if (sectionId === 'math-achievements') {
         navigateTo('math-achievements');
         renderAchievements();
         return;
       }
-      if (hasGrades) {
+
+      // مكتبة الرياضيات: الأنواع مباشرة دون عرض الصفوف.
+      if (sectionId === 'math-library') {
+        document.getElementById('generic-section-title').textContent = name;
+        navigateTo('generic-section');
+        await renderGenericSection();
+        return;
+      }
+
+      // الوسائل التعليمية: لا نعرض الصفوف للزائر.
+      // إذا وُجد محتوى، يظهر المحتوى مباشرة. وإذا لم يوجد محتوى،
+      // تظهر أنواع المحتوى مباشرة. حذف الصفوف من إدارة القسم لا يغيّر
+      // هذه الصفحة إلى صفحة صفوف؛ بل يجعلها تعتمد على المحتوى/الأنواع.
+      if (sectionId === 'learning-tools') {
+        document.getElementById('generic-section-title').textContent = name;
+        if (document.getElementById('professional-page-title')) document.getElementById('professional-page-title').textContent = name;
+        navigateTo('generic-section');
+        await renderGenericSection();
+        return;
+      }
+
+      // الأقسام الأخرى يمكنها استخدام الصفوف المرتبطة بها في section_grades.
+      try {
+        const structure = await fetchSectionStructure(sectionId);
+        currentSectionGrades = Array.isArray(structure.grades) ? structure.grades : [];
+        currentSectionStructureLoaded = true;
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Public section structure error:', error);
+        currentSectionGrades = [];
+        currentSectionStructureLoaded = true;
+      }
+
+      if (currentSectionGrades.length > 0) {
         document.getElementById('section-page-title').textContent = name;
         document.getElementById('breadcrumb-section-name').textContent = name;
         navigateTo('semester1');
+        await renderGradesGrid();
       } else {
         document.getElementById('generic-section-title').textContent = name;
         if (document.getElementById('professional-page-title')) document.getElementById('professional-page-title').textContent = name;
         navigateTo('generic-section');
+        await renderGenericSection();
       }
     }
 
@@ -695,16 +735,47 @@
     const defaultGradeRecords = [['الصف الخامس','grade5'],['الصف السادس','grade6'],['الصف السابع','grade7'],['الصف الثامن','grade8'],['الصف التاسع','grade9'],['الصف العاشر','grade10'],['الصف الحادي عشر','grade11'],['الصف الثاني عشر','grade12']];
 
     function getAvailableGrades() {
-      return siteGrades.length ? siteGrades : defaultGradeRecords.map(([title,id],i)=>({title,grade:id,content_type:gradeIcons[i % gradeIcons.length]}));
+      // عند فتح قسم محدد نستخدم الصفوف المرتبطة به في section_grades.
+      if (currentSectionStructureLoaded) {
+        return currentSectionGrades.map((g, i) => ({
+          ...g,
+          title: g.grade_name || g.title || g.name || '',
+          grade: g.grade_slug || g.grade || '',
+          grade_id: g.grade_id || g.id,
+          content_type: g.content_type || gradeIcons[i % gradeIcons.length]
+        }));
+      }
+
+      return siteGrades.length
+        ? siteGrades
+        : defaultGradeRecords.map(([title,id],i)=>({
+            title,
+            grade:id,
+            content_type:gradeIcons[i % gradeIcons.length]
+          }));
     }
 
-    function renderGradesGrid() {
+    async function renderGradesGrid() {
       const grid = document.getElementById('grades-grid');
       if (!grid) return;
+
+      // إذا كان القسم الحالي محددًا، حدّث علاقته من Neon قبل العرض.
+      if (currentSectionId && !currentSectionStructureLoaded) {
+        const structure = await fetchSectionStructure(currentSectionId);
+        currentSectionGrades = Array.isArray(structure.grades) ? structure.grades : [];
+        currentSectionStructureLoaded = true;
+      }
+
       const grades = getAvailableGrades();
+
+      if (!grades.length) {
+        grid.innerHTML = '<div class="sm:col-span-2 md:col-span-3 lg:col-span-5 rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">لا توجد صفوف مضافة إلى هذا القسم حاليًا.</div>';
+        return;
+      }
+
       grid.innerHTML = grades.map((g, i) => {
         const icon = g.content_type || gradeIcons[i % gradeIcons.length];
-        return `<button onclick="showGrade('${escapeHtml(g.grade)}')" class="card-hover rounded-2xl p-6 text-center cursor-pointer border border-blue-100 bg-white"><div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="${icon}" class="w-7 h-7 text-blue-600"></i></div><p class="font-bold text-blue-900">${escapeHtml(g.title)}</p></button>`;
+        return `<button onclick="showGrade('${escapeHtml(g.grade)}')" class="card-hover rounded-2xl p-6 text-center cursor-pointer border border-blue-100 bg-white"><div class="w-14 h-14 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-3"><i data-lucide="${escapeHtml(icon)}" class="w-7 h-7 text-blue-600"></i></div><p class="font-bold text-blue-900">${escapeHtml(g.title)}</p></button>`;
       }).join('');
       lucide.createIcons();
     }
@@ -720,10 +791,10 @@
       document.getElementById('detail-title').textContent = name + ' – ' + getSectionName(currentSectionId);
       window.scrollTo(0, 0);
     }
-    function showGrades() {
+    async function showGrades() {
       document.getElementById('grade-detail').classList.add('hidden');
       document.getElementById('grades-view').classList.remove('hidden');
-      renderGradesGrid();
+      await renderGradesGrid();
     }
 
     function openContent(type) {
@@ -827,17 +898,222 @@
       }
     }
 
-    function renderGenericSection() {
+    async function renderMathLibraryTypes() {
+      const backButton = document.getElementById('math-library-back-types');
+      if (backButton) backButton.classList.add('hidden');
+      const title = document.getElementById('generic-section-title');
+      if (title) title.textContent = siteSections.find(s => String(s.grade || s.slug || s.id) === 'math-library')?.title || 'مكتبة الرياضيات';
+      const container = document.getElementById('generic-content-list');
+      const empty = document.getElementById('generic-empty');
+      if (!container || !empty) return;
+
+      try {
+        const structure = await fetchSectionStructure('math-library');
+        const types = Array.isArray(structure.types) ? structure.types : [];
+
+        if (!types.length) {
+          container.innerHTML = '';
+          empty.textContent = 'لا توجد أنواع محتوى مضافة إلى مكتبة الرياضيات حاليًا.';
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        empty.classList.add('hidden');
+        container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+        container.innerHTML = types.map((type, index) => {
+          const icons = ['book-open', 'file-text', 'presentation', 'video', 'clipboard-check', 'puzzle', 'link', 'library'];
+          const icon = type.icon || icons[index % icons.length];
+          const count = contentRecords.filter(item =>
+            String(item.section || '') === 'math-library' &&
+            String(item.content_type || '') === String(type.name || '')
+          ).length;
+
+          return `<button type="button" onclick="openMathLibraryType('${escapeHtml(type.name || '')}')" class="card-hover rounded-2xl border border-blue-100 bg-white p-7 text-center shadow-sm hover:shadow-md transition">
+            <div class="w-16 h-16 mx-auto bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
+              <i data-lucide="${escapeHtml(icon)}" class="w-8 h-8 text-blue-600"></i>
+            </div>
+            <h3 class="font-extrabold text-blue-950 text-lg">${escapeHtml(type.name || '')}</h3>
+            <p class="mt-2 text-sm text-slate-500">${escapeHtml(type.description || '')}</p>
+            <span class="inline-block mt-4 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-700">${count.toLocaleString('ar-OM')} محتوى</span>
+          </button>`;
+        }).join('');
+        lucide.createIcons();
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Math library types error:', error);
+        container.innerHTML = '';
+        empty.textContent = 'تعذر تحميل أنواع مكتبة الرياضيات حاليًا.';
+        empty.classList.remove('hidden');
+      }
+    }
+
+    function openMathLibraryType(typeName) {
+      const container = document.getElementById('generic-content-list');
+      const empty = document.getElementById('generic-empty');
+      const title = document.getElementById('generic-section-title');
+      if (!container || !empty) return;
+
+      const originalSectionTitle = siteSections.find(s => String(s.grade || s.slug || s.id) === 'math-library')?.title || 'مكتبة الرياضيات';
+      const items = contentRecords.filter(item =>
+        String(item.section || '') === 'math-library' &&
+        String(item.content_type || '') === String(typeName || '')
+      );
+
+      title.textContent = `${originalSectionTitle} – ${typeName}`;
+
+      let backButton = document.getElementById('math-library-back-types');
+      if (!backButton) {
+        const homeButton = document.querySelector('#page-generic-section a[onclick="navigateTo(\'home\')"]');
+        if (homeButton) {
+          homeButton.insertAdjacentHTML('afterend', '<button id="math-library-back-types" type="button" onclick="document.getElementById(\'generic-section-title\').textContent=\'مكتبة الرياضيات\'; renderMathLibraryTypes()" class="mr-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm shadow-sm bg-blue-900 text-white">← أنواع المكتبة</button>');
+        }
+      }
+      backButton = document.getElementById('math-library-back-types');
+      if (backButton) backButton.classList.remove('hidden');
+
+      if (!items.length) {
+        container.innerHTML = '';
+        empty.textContent = 'لا توجد محتويات مضافة لهذا النوع حاليًا.';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+      container.innerHTML = items.map(item => `<div class="card-hover rounded-2xl border border-blue-100 bg-white p-6 shadow-sm">
+        <h3 class="font-bold text-blue-950 text-center">${escapeHtml(item.title || '')}</h3>
+        <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
+        ${item.grade ? `<p class="text-xs text-slate-400 mt-2 text-center">${escapeHtml(item.grade)}</p>` : ''}
+        ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}
+      </div>`).join('');
+    }
+
+    async function renderGenericSection() {
+      if (currentSectionId === 'math-library') {
+        await renderMathLibraryTypes();
+        return;
+      }
+
+      if (currentSectionId === 'learning-tools') {
+        await renderLearningToolsDirect();
+        return;
+      }
+
       const items = contentRecords.filter(i => i.section === currentSectionId);
       const container = document.getElementById('generic-content-list');
       const empty = document.getElementById('generic-empty');
       if (items.length) {
         empty.classList.add('hidden');
+        container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
         container.innerHTML = items.map(i => `<div class="card-hover rounded-2xl border border-blue-100 bg-white p-6 shadow-sm"><h3 class="font-bold text-blue-950 text-center">${escapeHtml(i.title)}</h3><p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}</div>`).join('');
+        lucide.createIcons();
       } else {
+        empty.textContent = 'لا توجد محتويات مضافة إلى هذا القسم حاليًا.';
         empty.classList.remove('hidden');
         container.innerHTML = '';
       }
+    }
+
+    async function renderLearningToolsDirect() {
+      const container = document.getElementById('generic-content-list');
+      const empty = document.getElementById('generic-empty');
+      const title = document.getElementById('generic-section-title');
+      if (!container || !empty) return;
+
+      if (title) {
+        title.textContent = siteSections.find(s => String(s.grade || s.slug || s.id) === 'learning-tools')?.title || 'الوسائل التعليمية';
+      }
+
+      // المحتوى هو المستوى الأول في الصفحة العامة: لا صفوف ولا شاشة اختيار صف.
+      const items = contentRecords.filter(item =>
+        String(item.section || '') === 'learning-tools'
+      );
+
+      if (items.length) {
+        empty.classList.add('hidden');
+        container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+        container.innerHTML = items.map(item => {
+          const typeLabel = item.content_type || 'محتوى تعليمي';
+          const icon = typeLabel.includes('فيديو') ? 'video' :
+            typeLabel.includes('عرض') ? 'presentation' :
+            typeLabel.includes('ورق') ? 'file-text' :
+            typeLabel.includes('نشاط') ? 'puzzle' : 'book-open';
+
+          return `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
+            <div class="w-14 h-14 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
+              <i data-lucide="${escapeHtml(icon)}" class="w-7 h-7 text-purple-600"></i>
+            </div>
+            <div class="text-center">
+              <span class="inline-block rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">${escapeHtml(typeLabel)}</span>
+              <h3 class="mt-3 font-extrabold text-blue-950">${escapeHtml(item.title || '')}</h3>
+              <p class="mt-2 text-sm text-slate-500">${escapeHtml(item.description || '')}</p>
+              ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-block font-bold text-blue-600 hover:underline">فتح المحتوى ←</a>` : ''}
+            </div>
+          </article>`;
+        }).join('');
+        lucide.createIcons();
+        return;
+      }
+
+      // لا يوجد محتوى بعد: اعرض الأنواع مباشرة، دون الصفوف.
+      const structure = await fetchSectionStructure('learning-tools');
+      const types = Array.isArray(structure.types) ? structure.types : [];
+
+      if (!types.length) {
+        container.innerHTML = '';
+        empty.textContent = 'لا توجد محتويات أو أنواع مضافة إلى الوسائل التعليمية حاليًا.';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+      container.innerHTML = types.map((type, index) => {
+        const icons = ['file-text', 'presentation', 'video', 'puzzle', 'link', 'book-open'];
+        const icon = type.icon || icons[index % icons.length];
+        const count = contentRecords.filter(item =>
+          String(item.section || '') === 'learning-tools' &&
+          String(item.content_type || '') === String(type.name || '')
+        ).length;
+
+        return `<button type="button" onclick="openLearningToolsType('${escapeHtml(type.name || '')}')" class="card-hover rounded-2xl border border-purple-100 bg-white p-7 text-center shadow-sm hover:shadow-md transition">
+          <div class="w-16 h-16 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
+            <i data-lucide="${escapeHtml(icon)}" class="w-8 h-8 text-purple-600"></i>
+          </div>
+          <h3 class="font-extrabold text-blue-950 text-lg">${escapeHtml(type.name || '')}</h3>
+          <p class="mt-2 text-sm text-slate-500">${escapeHtml(type.description || '')}</p>
+          <span class="inline-block mt-4 rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">${count.toLocaleString('ar-OM')} محتوى</span>
+        </button>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function openLearningToolsType(typeName) {
+      const container = document.getElementById('generic-content-list');
+      const empty = document.getElementById('generic-empty');
+      const title = document.getElementById('generic-section-title');
+      if (!container || !empty) return;
+
+      const items = contentRecords.filter(item =>
+        String(item.section || '') === 'learning-tools' &&
+        String(item.content_type || '') === String(typeName || '')
+      );
+
+      title.textContent = `الوسائل التعليمية – ${typeName}`;
+      if (!items.length) {
+        container.innerHTML = '';
+        empty.textContent = 'لا توجد محتويات مضافة لهذا النوع حاليًا.';
+        empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+      container.innerHTML = items.map(item => `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
+        <h3 class="font-bold text-blue-950 text-center">${escapeHtml(item.title || '')}</h3>
+        <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
+        ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}
+      </article>`).join('');
+      lucide.createIcons();
     }
 
     // ============ SMART ASSISTANT ============
