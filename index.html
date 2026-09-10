@@ -454,6 +454,8 @@
     let achievementRecords = []; // Neon achievements
     let databaseLoaded = false;
     let databaseLoading = false;
+    let sectionGradesCache = {};
+    let contentTypesCache = {};
 
     // Icons and colors for sections (by index fallback)
     const sectionIcons = ['book-open','notebook-pen','lightbulb','library','star','bot','briefcase','folder','layers'];
@@ -1047,32 +1049,69 @@
       sel.innerHTML = sections.map(s => `<option value="${escapeHtml(s.grade)}">${escapeHtml(s.title)}</option>`).join('');
       if (!sel.value && sections.length) sel.value = sections[0].grade;
     }
-    function populateGradeSelect() {
+    async function fetchSectionStructure(sectionSlug) {
+      const key = String(sectionSlug || '').trim();
+      if (!key) return { grades: [], types: [] };
+
+      if (sectionGradesCache[key] && contentTypesCache[key]) {
+        return { grades: sectionGradesCache[key], types: contentTypesCache[key] };
+      }
+
+      try {
+        const [gradesResponse, typesResponse] = await Promise.all([
+          fetch(`/api/structure?section=${encodeURIComponent(key)}&type=grades`, { headers: { Accept: 'application/json' }, cache: 'no-store' }),
+          fetch(`/api/structure?section=${encodeURIComponent(key)}&type=types`, { headers: { Accept: 'application/json' }, cache: 'no-store' })
+        ]);
+        const gradesData = await gradesResponse.json().catch(() => ({}));
+        const typesData = await typesResponse.json().catch(() => ({}));
+        const grades = gradesResponse.ok && gradesData.success && Array.isArray(gradesData.section_grades) ? gradesData.section_grades : [];
+        const types = typesResponse.ok && typesData.success && Array.isArray(typesData.content_types) ? typesData.content_types : [];
+        sectionGradesCache[key] = grades;
+        contentTypesCache[key] = types;
+        return { grades, types };
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Structure load error:', error);
+        return { grades: [], types: [] };
+      }
+    }
+
+    async function populateGradeSelect(preferredValue = '') {
       const sel = document.getElementById('admin-content-grade');
-      if (!sel) return;
-      const grades = getAvailableGrades();
-      sel.innerHTML = grades.map(g => `<option value="${escapeHtml(g.grade)}">${escapeHtml(g.title)}</option>`).join('');
-      if (!sel.value && grades.length) sel.value = grades[0].grade;
+      const sectionSel = document.getElementById('admin-content-section');
+      if (!sel || !sectionSel) return;
+      const sectionSlug = sectionSel.value;
+      const { grades } = await fetchSectionStructure(sectionSlug);
+      const list = grades.length ? grades : getAvailableGrades().map(g => ({ grade_slug: g.grade, grade_name: g.title, grade_number: g.grade_number }));
+      sel.innerHTML = list.map(g => `<option value="${escapeHtml(g.grade_slug || g.grade || '')}">${escapeHtml(g.grade_name || g.title || '')}</option>`).join('');
+      if (preferredValue && list.some(g => String(g.grade_slug || g.grade) === String(preferredValue))) sel.value = preferredValue;
+      else if (list.length) sel.value = list[0].grade_slug || list[0].grade || '';
     }
 
     const professionalTypes = ['ورقة عمل', 'ملف', 'فيديو', 'رابط'];
     const generalTypes = ['درس', 'ملخص', 'فيديو', 'رابط خارجي', 'اختبار', 'عرض', 'نشاط'];
 
-    function handleSectionChange() {
-      const sectionId = document.getElementById('admin-content-section').value;
+    async function handleSectionChange(preferredGrade = '', preferredType = '') {
+      const sectionId = document.getElementById('admin-content-section')?.value || '';
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       const sec = sections.find(s => s.grade === sectionId);
       const isPro = sec && sec.title.includes('التنمية المهنية');
       const gradeLabel = document.getElementById('grade-label');
       const typeSelect = document.getElementById('admin-content-type');
+      if (!gradeLabel || !typeSelect) return;
+
       if (isPro) {
         gradeLabel.classList.add('hidden');
-        typeSelect.innerHTML = professionalTypes.map(t => `<option>${t}</option>`).join('');
-      } else {
-        gradeLabel.classList.remove('hidden');
-        populateGradeSelect();
-        typeSelect.innerHTML = generalTypes.map(t => `<option>${t}</option>`).join('');
+        typeSelect.innerHTML = professionalTypes.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('');
+        if (preferredType) typeSelect.value = preferredType;
+        return;
       }
+
+      gradeLabel.classList.remove('hidden');
+      const structure = await fetchSectionStructure(sectionId);
+      const types = structure.types.length ? structure.types : generalTypes.map(name => ({ name }));
+      typeSelect.innerHTML = types.map(t => `<option value="${escapeHtml(t.name || t.title || '')}">${escapeHtml((t.icon ? t.icon + ' ' : '') + (t.name || t.title || ''))}</option>`).join('');
+      if (preferredType && types.some(t => String(t.name || t.title) === String(preferredType))) typeSelect.value = preferredType;
+      await populateGradeSelect(preferredGrade);
     }
 
     function renderManagedContent(mode) {
@@ -1089,9 +1128,7 @@
       document.getElementById('admin-content-title').value = item.title || '';
       document.getElementById('admin-content-description').value = item.description || '';
       document.getElementById('admin-content-section').value = item.section || '';
-      handleSectionChange();
-      document.getElementById('admin-content-grade').value = item.grade || '';
-      document.getElementById('admin-content-type').value = item.content_type || '';
+      handleSectionChange(item.grade || '', item.content_type || '');
       document.getElementById('admin-content-link').value = item.link || '';
       document.getElementById('admin-content-image').value = item.image_url || '';
       document.getElementById('editor-heading').textContent = 'تعديل المحتوى';
@@ -1400,49 +1437,315 @@
         : '<p class="text-sm text-slate-500">لا توجد محتويات مضافة بعد.</p>';
     }
 
-    // ============ MANAGEMENT TABS (Sections & Grades) ============
-    function showManagementTab(tab) {
+    // ============ MANAGEMENT TABS (Sections, Internal Structure & Content) ============
+    let managementView = 'sections';
+    let selectedManagementSection = null;
+
+    function clearStructureCaches() {
+      sectionGradesCache = {};
+      contentTypesCache = {};
+    }
+
+    async function showManagementTab(tab) {
+      managementView = tab;
       const panel = document.getElementById('management-tab-content');
       if (!panel) return;
 
-      const isSections = tab === 'sections';
-      const list = isSections ? siteSections : siteGrades;
-      const title = isSections ? 'إدارة الأقسام' : 'إدارة الصفوف الدراسية';
-      const kind = isSections ? 'section' : 'grade';
+      if (tab === 'sections') {
+        renderSectionManagementHome();
+        return;
+      }
+
+      if (tab === 'grades') {
+        renderGlobalGradesManagement();
+        return;
+      }
+
+      if (tab === 'section-detail' && selectedManagementSection) {
+        await renderSectionDetailManagement(selectedManagementSection);
+        return;
+      }
+
+      renderSectionManagementHome();
+    }
+
+    function renderSectionManagementHome() {
+      const panel = document.getElementById('management-tab-content');
+      if (!panel) return;
+
+      const sections = Array.isArray(siteSections) ? siteSections : [];
 
       panel.innerHTML = `
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h3 class="text-xl font-bold text-blue-950">${title}</h3>
-            <p class="mt-1 text-sm text-slate-500">يمكنك إضافة العناصر أو تعديلها أو حذفها مباشرة من قاعدة Neon.</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <span class="rounded-xl bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">متصل بقاعدة Neon</span>
-            <button type="button" onclick="addStructureItem('${kind}')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white shadow-sm hover:bg-blue-700">➕ إضافة ${isSections ? 'قسم' : 'صف'}</button>
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 class="text-xl font-extrabold text-blue-950">إدارة الأقسام من الداخل</h3>
+              <p class="mt-1 text-sm leading-7 text-slate-500">افتح أي قسم لإدارة الصفوف وأنواع المحتوى والمحتويات المرتبطة به.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <span class="rounded-xl bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">متصل بقاعدة Neon</span>
+              <button type="button" onclick="addStructureItem('section')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700">➕ إضافة قسم</button>
+            </div>
           </div>
         </div>
 
-        <div class="mt-5 grid gap-3">
-          ${list.length ? list.map((item, index) => `
-            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-              <div class="min-w-0">
-                <strong class="text-blue-950">${escapeHtml(item.title || item.name || '')}</strong>
-                <p class="mt-1 text-xs text-slate-500">
-                  ${isSections
-                    ? `المعرّف: ${escapeHtml(item.grade || item.slug || '')} · الترتيب: ${Number(item.sort_order ?? index) + 1}`
-                    : `المعرّف: ${escapeHtml(item.grade || item.slug || '')} · الصف رقم ${escapeHtml(String(item.grade_number ?? ''))}`}
-                </p>
+        <div class="mt-5 grid gap-4 md:grid-cols-2">
+          ${sections.length ? sections.map((item, index) => `
+            <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md transition">
+              <div class="flex items-start justify-between gap-3">
+                <button type="button" onclick="openSectionManagement('${escapeHtml(String(item.grade || item.slug || item.id))}')" class="flex min-w-0 flex-1 items-center gap-3 text-right">
+                  <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-2xl">${escapeHtml(item.content_type || '📁')}</span>
+                  <span class="min-w-0">
+                    <strong class="block text-lg font-extrabold text-blue-950">${escapeHtml(item.title || item.name || '')}</strong>
+                    <span class="mt-1 block text-xs text-slate-500">${escapeHtml(item.grade || item.slug || '')}</span>
+                  </span>
+                </button>
               </div>
-              <div class="flex flex-wrap gap-2">
-                <button type="button" onclick="editStructureItem('${kind}','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white hover:bg-emerald-700">✏️ تعديل</button>
-                <button type="button" onclick="deleteStructureItem('${kind}','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-bold text-white hover:bg-rose-700">🗑️ حذف</button>
+              <div class="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div class="rounded-xl bg-blue-50 p-3"><div class="text-xs text-slate-500">الصفوف</div><div id="section-grade-count-${index}" class="mt-1 font-extrabold text-blue-700">—</div></div>
+                <div class="rounded-xl bg-violet-50 p-3"><div class="text-xs text-slate-500">الأنواع</div><div id="section-type-count-${index}" class="mt-1 font-extrabold text-violet-700">—</div></div>
+                <div class="rounded-xl bg-emerald-50 p-3"><div class="text-xs text-slate-500">المحتوى</div><div id="section-content-count-${index}" class="mt-1 font-extrabold text-emerald-700">${contentsCountForSection(item.grade || item.slug || item.id)}</div></div>
               </div>
+              <div class="mt-4 flex flex-wrap gap-2">
+                <button type="button" onclick="openSectionManagement('${escapeHtml(String(item.grade || item.slug || item.id))}')" class="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 font-bold text-white hover:bg-blue-700">⚙️ إدارة القسم من الداخل</button>
+                <button type="button" onclick="editStructureItem('section','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-xl bg-emerald-600 px-3 py-2.5 font-bold text-white">✏️</button>
+                <button type="button" onclick="deleteStructureItem('section','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-xl bg-rose-600 px-3 py-2.5 font-bold text-white">🗑️</button>
+              </div>
+            </article>
+          `).join('') : '<div class="md:col-span-2 rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">لا توجد أقسام حاليًا.</div>'}
+        </div>
+      `;
+
+      sections.forEach(async (item, index) => {
+        const structure = await fetchSectionStructure(item.grade || item.slug || item.id);
+        const gradeEl = document.getElementById(`section-grade-count-${index}`);
+        const typeEl = document.getElementById(`section-type-count-${index}`);
+        if (gradeEl) gradeEl.textContent = structure.grades.length.toLocaleString('ar-OM');
+        if (typeEl) typeEl.textContent = structure.types.length.toLocaleString('ar-OM');
+      });
+    }
+
+    function contentsCountForSection(sectionSlug) {
+      return contentRecords.filter(item => String(item.section || '') === String(sectionSlug || '')).length.toLocaleString('ar-OM');
+    }
+
+    async function openSectionManagement(sectionSlug) {
+      const item = siteSections.find(s => String(s.grade || s.slug || s.id) === String(sectionSlug));
+      if (!item) {
+        showStatus('القسم المطلوب غير موجود.', false);
+        return;
+      }
+      selectedManagementSection = item;
+      managementView = 'section-detail';
+      await showManagementTab('section-detail');
+    }
+
+    async function renderSectionDetailManagement(section) {
+      const panel = document.getElementById('management-tab-content');
+      if (!panel) return;
+      const slug = section.grade || section.slug || section.id;
+      const structure = await fetchSectionStructure(slug);
+      const sectionContents = contentRecords.filter(item => String(item.section || '') === String(slug || ''));
+
+      panel.innerHTML = `
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <button type="button" onclick="showManagementTab('sections')" class="mb-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">← العودة إلى الأقسام</button>
+              <h3 class="text-2xl font-extrabold text-blue-950">${escapeHtml(section.title || section.name || '')}</h3>
+              <p class="mt-1 text-sm text-slate-500">إدارة الصفوف والأنواع والمحتويات داخل هذا القسم.</p>
             </div>
-          `).join('') : `
-            <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">
-              لا توجد عناصر حاليًا. اضغط «إضافة ${isSections ? 'قسم' : 'صف'}» لإنشاء أول عنصر.
+            <span class="rounded-xl bg-emerald-100 px-4 py-2 text-sm font-bold text-emerald-800">متصل بقاعدة Neon</span>
+          </div>
+        </div>
+
+        <div class="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
+          <section class="rounded-2xl border border-blue-100 bg-blue-50/50 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div><h4 class="text-lg font-extrabold text-blue-950">🎓 الصفوف داخل القسم</h4><p class="mt-1 text-xs text-slate-500">إضافة أو إزالة صفوف من هذا القسم فقط.</p></div>
+              <button type="button" onclick="addSectionGrade('${escapeHtml(String(slug))}')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700">➕ إضافة صف</button>
             </div>
-          `}
+            <div id="section-grades-list" class="mt-4 grid gap-2">
+              ${structure.grades.length ? structure.grades.map(g => `
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <div><strong class="text-blue-950">${escapeHtml(g.grade_name || '')}</strong><div class="mt-1 text-xs text-slate-500">الصف ${escapeHtml(String(g.grade_number ?? ''))}</div></div>
+                  <button type="button" onclick="deleteSectionGrade('${escapeHtml(String(g.id))}','${escapeHtml(String(slug))}')" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-bold text-white">🗑️ إزالة</button>
+                </div>
+              `).join('') : '<p class="rounded-xl bg-white p-4 text-center text-sm text-slate-500">لا توجد صفوف مرتبطة بهذا القسم.</p>'}
+            </div>
+          </section>
+
+          <section class="rounded-2xl border border-violet-100 bg-violet-50/50 p-5">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div><h4 class="text-lg font-extrabold text-violet-950">🗂️ أنواع المحتوى</h4><p class="mt-1 text-xs text-slate-500">أضف أو عدّل أو احذف أنواع المحتوى لهذا القسم.</p></div>
+              <button type="button" onclick="addContentType('${escapeHtml(String(slug))}')" class="rounded-xl bg-violet-600 px-4 py-2 font-bold text-white hover:bg-violet-700">➕ إضافة نوع</button>
+            </div>
+            <div id="section-types-list" class="mt-4 grid gap-2">
+              ${structure.types.length ? structure.types.map(t => `
+                <div class="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <div class="min-w-0"><strong class="text-violet-950">${escapeHtml((t.icon ? t.icon + ' ' : '') + (t.name || ''))}</strong><div class="mt-1 text-xs text-slate-500">${escapeHtml(t.description || '')}</div></div>
+                  <div class="flex shrink-0 gap-2"><button type="button" onclick="editContentType('${escapeHtml(String(t.id))}','${escapeHtml(String(slug))}')" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white">✏️</button><button type="button" onclick="deleteContentType('${escapeHtml(String(t.id))}','${escapeHtml(String(slug))}')" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-bold text-white">🗑️</button></div>
+                </div>
+              `).join('') : '<p class="rounded-xl bg-white p-4 text-center text-sm text-slate-500">لا توجد أنواع محتوى لهذا القسم.</p>'}
+            </div>
+          </section>
+        </div>
+
+        <section class="mt-5 rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><h4 class="text-lg font-extrabold text-emerald-950">📚 المحتويات داخل القسم</h4><p class="mt-1 text-xs text-slate-500">يمكنك فتح المحتوى وتعديله أو حذفه، أو إضافة محتوى جديد لهذا القسم.</p></div>
+            <button type="button" onclick="openAddContentForSection('${escapeHtml(String(slug))}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white hover:bg-emerald-700">➕ إضافة محتوى للقسم</button>
+          </div>
+          <div class="mt-4 grid gap-3">
+            ${sectionContents.length ? sectionContents.map(item => `
+              <div class="rounded-xl border border-slate-200 bg-white p-4">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(item.grade_name || item.grade || 'عام')} · ${escapeHtml(item.content_type || 'محتوى')}</p><p class="mt-1 text-sm text-slate-600">${escapeHtml(item.description || '')}</p></div>
+                  <div class="flex gap-2"><button type="button" onclick="editItem('${escapeHtml(String(item.__backendId))}')" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white">✏️ تعديل</button><button type="button" onclick="requestDelete('${escapeHtml(String(item.__backendId))}')" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-bold text-white">🗑️ حذف</button></div>
+                </div>
+              </div>
+            `).join('') : '<p class="rounded-xl bg-white p-5 text-center text-sm text-slate-500">لا توجد محتويات في هذا القسم حتى الآن.</p>'}
+          </div>
+        </section>
+      `;
+    }
+
+    async function addSectionGrade(sectionSlug) {
+      const section = siteSections.find(s => String(s.grade || s.slug || s.id) === String(sectionSlug));
+      if (!section) return;
+      const available = siteGrades.filter(g => g.is_active !== false);
+      const structure = await fetchSectionStructure(sectionSlug);
+      const existing = new Set(structure.grades.map(g => String(g.grade_id)));
+      const choices = available.filter(g => !existing.has(String(g.id)));
+      if (!choices.length) { alert('جميع الصفوف الحالية مرتبطة بهذا القسم.'); return; }
+      const options = choices.map((g, i) => `${i + 1}. ${g.title || g.name}`).join('\n');
+      const answer = prompt(`اختر الصف بإدخال الرقم:\n\n${options}`);
+      const index = Number(answer) - 1;
+      if (!Number.isInteger(index) || !choices[index]) return;
+      if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+      try {
+        const response = await fetch('/api/structure', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ entity: 'section-grade', section_id: section.id, grade_id: choices[index].id }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر إضافة الصف.');
+        clearStructureCaches();
+        await renderSectionDetailManagement(section);
+        showStatus('تمت إضافة الصف إلى القسم بنجاح.');
+      } catch (error) { showStatus(error.message || 'تعذر إضافة الصف.', false); }
+    }
+
+    async function deleteSectionGrade(id, sectionSlug) {
+      if (!confirm('هل تريد إزالة هذا الصف من القسم؟\n\nلن يتم حذف الصف من الموقع، بل سيتم فقط إزالته من هذا القسم.')) return;
+      if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+      try {
+        const response = await fetch(`/api/structure?id=${encodeURIComponent(id)}&type=section-grade`, { method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ id: Number(id), entity: 'section-grade' }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر إزالة الصف.');
+        clearStructureCaches();
+        const section = siteSections.find(s => String(s.grade || s.slug || s.id) === String(sectionSlug));
+        await renderSectionDetailManagement(section);
+        showStatus('تمت إزالة الصف من القسم.');
+      } catch (error) { showStatus(error.message || 'تعذر إزالة الصف.', false); }
+    }
+
+    function addContentType(sectionSlug) {
+      const panel = document.getElementById('management-tab-content');
+      if (!panel) return;
+      const old = panel.querySelector('#inline-content-type-form');
+      if (old) old.remove();
+      panel.insertAdjacentHTML('afterbegin', `
+        <form id="inline-content-type-form" class="mb-5 rounded-2xl border border-violet-200 bg-violet-50 p-5">
+          <h4 class="text-lg font-extrabold text-violet-950">➕ إضافة نوع محتوى</h4>
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input id="new-type-name" required maxlength="200" class="rounded-xl border border-violet-200 bg-white p-3" placeholder="اسم النوع، مثل: أوراق عمل">
+            <input id="new-type-icon" maxlength="20" class="rounded-xl border border-violet-200 bg-white p-3" placeholder="أيقونة، مثل 📄">
+            <input id="new-type-description" maxlength="1000" class="rounded-xl border border-violet-200 bg-white p-3" placeholder="وصف مختصر (اختياري)">
+          </div>
+          <div class="mt-3 flex gap-2"><button class="rounded-xl bg-violet-600 px-5 py-2 font-bold text-white" type="submit">حفظ النوع</button><button class="rounded-xl border bg-white px-5 py-2" type="button" onclick="document.getElementById('inline-content-type-form')?.remove()">إلغاء</button></div>
+        </form>
+      `);
+      document.getElementById('inline-content-type-form')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+        try {
+          const response = await fetch('/api/structure', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ entity: 'content-type', section_id: siteSections.find(s => String(s.grade || s.slug || s.id) === String(sectionSlug))?.id, name: document.getElementById('new-type-name').value.trim(), icon: document.getElementById('new-type-icon').value.trim(), description: document.getElementById('new-type-description').value.trim() }) });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) throw new Error(data.error || 'تعذر إضافة النوع.');
+          clearStructureCaches();
+          await renderSectionDetailManagement(selectedManagementSection);
+          showStatus('تمت إضافة نوع المحتوى بنجاح.');
+        } catch (error) { showStatus(error.message || 'تعذر إضافة النوع.', false); }
+      });
+    }
+
+    function editContentType(id, sectionSlug) {
+      const section = selectedManagementSection;
+      const types = contentTypesCache[sectionSlug] || [];
+      const item = types.find(t => String(t.id) === String(id));
+      const panel = document.getElementById('management-tab-content');
+      if (!item || !panel) return;
+      const old = panel.querySelector('#inline-content-type-form');
+      if (old) old.remove();
+      panel.insertAdjacentHTML('afterbegin', `
+        <form id="inline-content-type-form" class="mb-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+          <h4 class="text-lg font-extrabold text-emerald-950">✏️ تعديل نوع المحتوى</h4>
+          <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input id="edit-type-name" required maxlength="200" value="${escapeHtml(item.name || '')}" class="rounded-xl border border-emerald-200 bg-white p-3">
+            <input id="edit-type-icon" maxlength="20" value="${escapeHtml(item.icon || '')}" class="rounded-xl border border-emerald-200 bg-white p-3">
+            <input id="edit-type-description" maxlength="1000" value="${escapeHtml(item.description || '')}" class="rounded-xl border border-emerald-200 bg-white p-3">
+          </div>
+          <div class="mt-3 flex gap-2"><button class="rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white" type="submit">حفظ التعديل</button><button class="rounded-xl border bg-white px-5 py-2" type="button" onclick="document.getElementById('inline-content-type-form')?.remove()">إلغاء</button></div>
+        </form>
+      `);
+      document.getElementById('inline-content-type-form')?.addEventListener('submit', async e => {
+        e.preventDefault();
+        if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+        try {
+          const response = await fetch('/api/structure', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ entity: 'content-type', id: Number(id), section_id: section.id, name: document.getElementById('edit-type-name').value.trim(), slug: item.slug, icon: document.getElementById('edit-type-icon').value.trim(), description: document.getElementById('edit-type-description').value.trim(), sort_order: item.sort_order, is_active: true }) });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تعديل النوع.');
+          clearStructureCaches();
+          await renderSectionDetailManagement(selectedManagementSection);
+          showStatus('تم تعديل نوع المحتوى بنجاح.');
+        } catch (error) { showStatus(error.message || 'تعذر تعديل النوع.', false); }
+      });
+    }
+
+    async function deleteContentType(id, sectionSlug) {
+      if (!confirm('هل تريد حذف نوع المحتوى هذا؟')) return;
+      if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+      try {
+        const response = await fetch(`/api/structure?id=${encodeURIComponent(id)}&type=content-type`, { method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ id: Number(id), entity: 'content-type' }) });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) throw new Error(data.error || 'تعذر حذف النوع.');
+        clearStructureCaches();
+        await renderSectionDetailManagement(selectedManagementSection);
+        showStatus('تم حذف نوع المحتوى بنجاح.');
+      } catch (error) { showStatus(error.message || 'تعذر حذف النوع.', false); }
+    }
+
+    async function openAddContentForSection(sectionSlug) {
+      openAdminWorkspace('add');
+      const sectionSelect = document.getElementById('admin-content-section');
+      if (!sectionSelect) return;
+      sectionSelect.value = sectionSlug;
+      await handleSectionChange();
+      selectedManagementSection = siteSections.find(s => String(s.grade || s.slug || s.id) === String(sectionSlug)) || selectedManagementSection;
+    }
+
+    async function renderGlobalGradesManagement() {
+      const panel = document.getElementById('management-tab-content');
+      if (!panel) return;
+      panel.innerHTML = `
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div><h3 class="text-xl font-extrabold text-blue-950">إدارة الصفوف الدراسية</h3><p class="mt-1 text-sm text-slate-500">هذه هي الصفوف العامة للموقع. حذف صف هنا يحذفه من النظام، بينما «إزالة الصف من القسم» تحذفه من قسم واحد فقط.</p></div>
+            <button type="button" onclick="addStructureItem('grade')" class="rounded-xl bg-blue-600 px-4 py-2 font-bold text-white">➕ إضافة صف</button>
+          </div>
+          <div class="mt-5 grid gap-3">${siteGrades.map((item, index) => `
+            <div class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4">
+              <div><strong class="text-blue-950">${escapeHtml(item.title || item.name || '')}</strong><p class="mt-1 text-xs text-slate-500">${escapeHtml(item.grade || item.slug || '')} · الصف رقم ${escapeHtml(String(item.grade_number ?? ''))}</p></div>
+              <div class="flex gap-2"><button type="button" onclick="editStructureItem('grade','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white">✏️ تعديل</button><button type="button" onclick="deleteStructureItem('grade','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-lg bg-rose-600 px-3 py-2 text-sm font-bold text-white">🗑️ حذف</button></div>
+            </div>`).join('')}</div>
         </div>
       `;
     }
@@ -1450,109 +1753,34 @@
     function addStructureItem(kind) {
       const panel = document.getElementById('management-tab-content');
       if (!panel) return;
-
       const isSection = kind === 'section';
       const title = isSection ? 'قسم' : 'صف دراسي';
       const currentTab = isSection ? 'sections' : 'grades';
       const nextOrder = (isSection ? siteSections : siteGrades).length;
-      const nextGradeNumber = siteGrades.length
-        ? Math.max(...siteGrades.map(g => Number(g.grade_number)).filter(Number.isFinite), 4) + 1
-        : 5;
-
+      const nextGradeNumber = siteGrades.length ? Math.max(...siteGrades.map(g => Number(g.grade_number)).filter(Number.isFinite), 4) + 1 : 5;
       panel.insertAdjacentHTML('afterbegin', `
         <form id="structure-form" class="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
           <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <label class="font-semibold text-blue-950 md:col-span-2">
-              اسم ${title}
-              <input id="structure-name" required maxlength="200" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:border-blue-500" type="text" placeholder="${isSection ? 'مثال: الوسائل التعليمية' : 'مثال: الصف التاسع'}">
-            </label>
-            ${isSection ? '' : `
-              <label class="font-semibold text-blue-950">
-                رقم الصف
-                <input id="structure-grade-number" required min="1" max="20" value="${nextGradeNumber}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:border-blue-500" type="number">
-              </label>
-            `}
+            <label class="font-semibold text-blue-950 md:col-span-2">اسم ${title}<input id="structure-name" required maxlength="200" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3" type="text" placeholder="${isSection ? 'مثال: قسم جديد' : 'مثال: الصف التاسع'}"></label>
+            ${isSection ? '' : `<label class="font-semibold text-blue-950">رقم الصف<input id="structure-grade-number" required min="1" max="20" value="${nextGradeNumber}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3" type="number"></label>`}
           </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button id="structure-save-button" class="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white hover:bg-blue-700" type="submit">حفظ ${title}</button>
-            <button class="rounded-xl border border-slate-300 bg-white px-5 py-2 font-semibold" type="button" onclick="showManagementTab('${currentTab}')">إلغاء</button>
-          </div>
+          <div class="mt-4 flex gap-2"><button id="structure-save-button" class="rounded-xl bg-blue-600 px-5 py-2 font-bold text-white" type="submit">حفظ ${title}</button><button class="rounded-xl border bg-white px-5 py-2" type="button" onclick="showManagementTab('${currentTab}')">إلغاء</button></div>
           <p id="structure-form-status" class="mt-3 hidden rounded-xl px-4 py-3 text-sm font-semibold"></p>
-        </form>
-      `);
-
-      const form = document.getElementById('structure-form');
-      form?.addEventListener('submit', async function(ev) {
+        </form>`);
+      document.getElementById('structure-form')?.addEventListener('submit', async function(ev) {
         ev.preventDefault();
-
-        const nameInput = document.getElementById('structure-name');
-        const gradeNumberInput = document.getElementById('structure-grade-number');
-        const saveButton = document.getElementById('structure-save-button');
-        const status = document.getElementById('structure-form-status');
-        const name = nameInput?.value.trim() || '';
-
+        const name = document.getElementById('structure-name')?.value.trim() || '';
         if (!name) return;
-
-        if (!await checkAdminSession()) {
-          showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false);
-          return;
-        }
-
-        const payload = isSection
-          ? {
-              name,
-              icon: sectionIcons[nextOrder % sectionIcons.length],
-              color: sectionColors[nextOrder % sectionColors.length],
-              sort_order: nextOrder,
-              is_active: true
-            }
-          : {
-              name,
-              grade_number: Number(gradeNumberInput?.value || nextGradeNumber),
-              sort_order: nextOrder,
-              icon: gradeIcons[nextOrder % gradeIcons.length],
-              is_active: true
-            };
-
-        saveButton.disabled = true;
-        saveButton.textContent = 'جارٍ الحفظ...';
-
+        if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+        const payload = isSection ? { name, icon: sectionIcons[nextOrder % sectionIcons.length], color: sectionColors[nextOrder % sectionColors.length], sort_order: nextOrder, is_active: true } : { name, grade_number: Number(document.getElementById('structure-grade-number')?.value || nextGradeNumber), sort_order: nextOrder, icon: gradeIcons[nextOrder % gradeIcons.length], is_active: true };
+        const button = document.getElementById('structure-save-button'); if (button) { button.disabled = true; button.textContent = 'جارٍ الحفظ...'; }
         try {
-          const response = await fetch(isSection ? '/api/sections' : '/api/grades', {
-            method: 'POST',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          });
-
+          const response = await fetch(isSection ? '/api/sections' : '/api/grades', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) });
           const data = await response.json().catch(() => ({}));
-
-          if (!response.ok || !data.success) {
-            throw new Error(data.error || `تعذر إضافة ${title}.`);
-          }
-
-          if (status) {
-            status.textContent = `تمت إضافة ${title} بنجاح.`;
-            status.className = 'mt-3 rounded-xl bg-emerald-100 px-4 py-3 text-sm font-semibold text-emerald-800';
-          }
-
-          await loadDatabaseData();
-          showManagementTab(currentTab);
-          showStatus(`تمت إضافة ${title} بنجاح.`);
-
-        } catch (error) {
-          console.error('[رياضيات بلاد الشهوم] Structure create error:', error);
-          if (status) {
-            status.textContent = error.message || `تعذر إضافة ${title}.`;
-            status.className = 'mt-3 rounded-xl bg-rose-100 px-4 py-3 text-sm font-semibold text-rose-800';
-          }
-        } finally {
-          saveButton.disabled = false;
-          saveButton.textContent = `حفظ ${title}`;
-        }
+          if (!response.ok || !data.success) throw new Error(data.error || `تعذر إضافة ${title}.`);
+          clearStructureCaches(); await loadDatabaseData(); await showManagementTab(currentTab); showStatus(`تمت إضافة ${title} بنجاح.`);
+        } catch (error) { showStatus(error.message || `تعذر إضافة ${title}.`, false); }
+        finally { if (button) { button.disabled = false; button.textContent = `حفظ ${title}`; } }
       });
     }
 
@@ -1561,187 +1789,35 @@
       const list = isSection ? siteSections : siteGrades;
       const item = list.find(r => String(r.__backendId || r.id) === String(backendId));
       const panel = document.getElementById('management-tab-content');
-
-      if (!item || !panel) {
-        showStatus('العنصر المطلوب غير موجود.', false);
-        return;
-      }
-
+      if (!item || !panel) return;
       const title = isSection ? 'القسم' : 'الصف الدراسي';
       const currentTab = isSection ? 'sections' : 'grades';
-
       panel.insertAdjacentHTML('afterbegin', `
         <form id="structure-form" class="mb-5 rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-sm">
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-            <label class="font-semibold text-blue-950 md:col-span-2">
-              اسم ${title}
-              <input id="structure-name" required maxlength="200" value="${escapeHtml(item.title || item.name || '')}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:border-emerald-500" type="text">
-            </label>
-            ${isSection ? '' : `
-              <label class="font-semibold text-blue-950">
-                رقم الصف
-                <input id="structure-grade-number" required min="1" max="20" value="${escapeHtml(String(item.grade_number ?? ''))}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3 outline-none focus:border-emerald-500" type="number">
-              </label>
-            `}
-          </div>
-          <div class="mt-4 flex flex-wrap gap-2">
-            <button id="structure-save-button" class="rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white hover:bg-emerald-700" type="submit">حفظ التعديل</button>
-            <button class="rounded-xl border border-slate-300 bg-white px-5 py-2 font-semibold" type="button" onclick="showManagementTab('${currentTab}')">إلغاء</button>
-          </div>
-          <p id="structure-form-status" class="mt-3 hidden rounded-xl px-4 py-3 text-sm font-semibold"></p>
-        </form>
-      `);
-
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end"><label class="font-semibold text-blue-950 md:col-span-2">اسم ${title}<input id="structure-name" required maxlength="200" value="${escapeHtml(item.title || item.name || '')}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3" type="text"></label>${isSection ? '' : `<label class="font-semibold text-blue-950">رقم الصف<input id="structure-grade-number" required min="1" max="20" value="${escapeHtml(String(item.grade_number ?? ''))}" class="mt-2 w-full rounded-xl border border-slate-300 bg-white p-3" type="number"></label>`}</div>
+          <div class="mt-4 flex gap-2"><button id="structure-save-button" class="rounded-xl bg-emerald-600 px-5 py-2 font-bold text-white" type="submit">حفظ التعديل</button><button class="rounded-xl border bg-white px-5 py-2" type="button" onclick="showManagementTab('${currentTab}')">إلغاء</button></div>
+        </form>`);
       document.getElementById('structure-form')?.addEventListener('submit', async function(ev) {
-        ev.preventDefault();
-
-        const name = document.getElementById('structure-name')?.value.trim() || '';
-        const gradeNumber = document.getElementById('structure-grade-number');
-        const saveButton = document.getElementById('structure-save-button');
-        const status = document.getElementById('structure-form-status');
-
-        if (!name) return;
-
-        if (!await checkAdminSession()) {
-          showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false);
-          return;
-        }
-
-        const payload = isSection
-          ? {
-              id: Number(item.id || item.__backendId),
-              name,
-              slug: item.slug || item.grade,
-              icon: item.icon || item.content_type || sectionIcons[0],
-              color: item.color || item.link || sectionColors[0],
-              sort_order: Number(item.sort_order || 0),
-              is_active: true
-            }
-          : {
-              id: Number(item.id || item.__backendId),
-              name,
-              slug: item.slug || item.grade,
-              grade_number: Number(gradeNumber?.value || item.grade_number),
-              sort_order: Number(item.sort_order || 0),
-              icon: item.icon || item.content_type || gradeIcons[0],
-              is_active: true
-            };
-
-        saveButton.disabled = true;
-        saveButton.textContent = 'جارٍ الحفظ...';
-
-        try {
-          const response = await fetch(isSection ? '/api/sections' : '/api/grades', {
-            method: 'PUT',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(payload)
-          });
-
-          const data = await response.json().catch(() => ({}));
-
-          if (!response.ok || !data.success) {
-            throw new Error(data.error || `تعذر تعديل ${title}.`);
-          }
-
-          await loadDatabaseData();
-          showManagementTab(currentTab);
-          showStatus(`تم تعديل ${title} بنجاح.`);
-
-        } catch (error) {
-          console.error('[رياضيات بلاد الشهوم] Structure update error:', error);
-          if (status) {
-            status.textContent = error.message || `تعذر تعديل ${title}.`;
-            status.className = 'mt-3 rounded-xl bg-rose-100 px-4 py-3 text-sm font-semibold text-rose-800';
-          }
-        } finally {
-          saveButton.disabled = false;
-          saveButton.textContent = 'حفظ التعديل';
-        }
+        ev.preventDefault(); const name = document.getElementById('structure-name')?.value.trim() || ''; if (!name) return;
+        if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+        const payload = isSection ? { id: Number(item.id || item.__backendId), name, slug: item.slug || item.grade, icon: item.icon || item.content_type || sectionIcons[0], color: item.color || item.link || sectionColors[0], sort_order: Number(item.sort_order || 0), is_active: true } : { id: Number(item.id || item.__backendId), name, slug: item.slug || item.grade, grade_number: Number(document.getElementById('structure-grade-number')?.value || item.grade_number), sort_order: Number(item.sort_order || 0), icon: item.icon || item.content_type || gradeIcons[0], is_active: true };
+        const button = document.getElementById('structure-save-button'); if (button) { button.disabled = true; button.textContent = 'جارٍ الحفظ...'; }
+        try { const response = await fetch(isSection ? '/api/sections' : '/api/grades', { method: 'PUT', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify(payload) }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.success) throw new Error(data.error || `تعذر تعديل ${title}.`); clearStructureCaches(); await loadDatabaseData(); await showManagementTab(currentTab); showStatus(`تم تعديل ${title} بنجاح.`); } catch (error) { showStatus(error.message || `تعذر تعديل ${title}.`, false); } finally { if (button) { button.disabled = false; button.textContent = 'حفظ التعديل'; } }
       });
     }
 
     function deleteStructureItem(kind, backendId) {
-      const panel = document.getElementById('management-tab-content');
-      if (!panel) return;
-
-      const isSection = kind === 'section';
-      const list = isSection ? siteSections : siteGrades;
-      const item = list.find(r => String(r.__backendId || r.id) === String(backendId));
-
-      if (!item) {
-        showStatus('العنصر المطلوب غير موجود.', false);
-        return;
-      }
-
-      const title = isSection ? 'القسم' : 'الصف الدراسي';
-      const currentTab = isSection ? 'sections' : 'grades';
-
-      const old = panel.querySelector('.confirm-structure');
-      if (old) old.remove();
-
-      panel.insertAdjacentHTML('beforeend', `
-        <div class="confirm-structure mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800">
-          <p class="font-bold">هل أنت متأكد من حذف «${escapeHtml(item.title || item.name || '')}»؟</p>
-          <p class="mt-1 text-sm">لن يتم حذف المحتوى أو المجيدات المرتبطة به؛ سيتم فقط فك الارتباط بهذا ${title}.</p>
-          <div class="mt-3 flex flex-wrap gap-2">
-            <button type="button" onclick="performStructureDelete('${kind}','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white hover:bg-rose-700">نعم، احذف</button>
-            <button type="button" onclick="showManagementTab('${currentTab}')" class="rounded-xl border border-slate-300 bg-white px-4 py-2 font-semibold">إلغاء</button>
-          </div>
-        </div>
-      `);
+      const panel = document.getElementById('management-tab-content'); if (!panel) return;
+      const isSection = kind === 'section'; const list = isSection ? siteSections : siteGrades; const item = list.find(r => String(r.__backendId || r.id) === String(backendId)); if (!item) return;
+      const title = isSection ? 'القسم' : 'الصف الدراسي'; const currentTab = isSection ? 'sections' : 'grades';
+      const old = panel.querySelector('.confirm-structure'); if (old) old.remove();
+      panel.insertAdjacentHTML('beforeend', `<div class="confirm-structure mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-rose-800"><p class="font-bold">هل أنت متأكد من حذف «${escapeHtml(item.title || item.name || '')}»؟</p><p class="mt-1 text-sm">حذف القسم أو الصف العام قد يؤثر في البيانات المرتبطة به. استخدم «إزالة من القسم» إذا كنت تريد إزالة صف من قسم واحد فقط.</p><div class="mt-3 flex gap-2"><button type="button" onclick="performStructureDelete('${kind}','${escapeHtml(String(item.__backendId || item.id))}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">نعم، احذف</button><button type="button" onclick="showManagementTab('${currentTab}')" class="rounded-xl border bg-white px-4 py-2">إلغاء</button></div></div>`);
     }
 
     async function performStructureDelete(kind, backendId) {
-      const isSection = kind === 'section';
-      const list = isSection ? siteSections : siteGrades;
-      const item = list.find(r => String(r.__backendId || r.id) === String(backendId));
-      const currentTab = isSection ? 'sections' : 'grades';
-      const title = isSection ? 'القسم' : 'الصف الدراسي';
-
-      if (!item) {
-        showStatus('العنصر المطلوب غير موجود.', false);
-        return;
-      }
-
-      if (!await checkAdminSession()) {
-        showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `${isSection ? '/api/sections' : '/api/grades'}?id=${encodeURIComponent(String(item.id || item.__backendId))}`,
-          {
-            method: 'DELETE',
-            credentials: 'include',
-            headers: {
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify({
-              id: Number(item.id || item.__backendId)
-            })
-          }
-        );
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok || !data.success) {
-          throw new Error(data.error || `تعذر حذف ${title}.`);
-        }
-
-        await loadDatabaseData();
-        showManagementTab(currentTab);
-        showStatus(`تم حذف ${title} بنجاح.`);
-
-      } catch (error) {
-        console.error('[رياضيات بلاد الشهوم] Structure delete error:', error);
-        showStatus(error.message || `تعذر حذف ${title}.`, false);
-      }
+      const isSection = kind === 'section'; const list = isSection ? siteSections : siteGrades; const item = list.find(r => String(r.__backendId || r.id) === String(backendId)); const currentTab = isSection ? 'sections' : 'grades'; const title = isSection ? 'القسم' : 'الصف الدراسي'; if (!item) return;
+      if (!await checkAdminSession()) { showStatus('انتهت جلسة الإدارة. يرجى تسجيل الدخول مرة أخرى.', false); return; }
+      try { const response = await fetch(`${isSection ? '/api/sections' : '/api/grades'}?id=${encodeURIComponent(String(item.id || item.__backendId))}`, { method: 'DELETE', credentials: 'include', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ id: Number(item.id || item.__backendId) }) }); const data = await response.json().catch(() => ({})); if (!response.ok || !data.success) throw new Error(data.error || `تعذر حذف ${title}.`); clearStructureCaches(); await loadDatabaseData(); await showManagementTab(currentTab); showStatus(`تم حذف ${title} بنجاح.`); } catch (error) { showStatus(error.message || `تعذر الحذف.`, false); }
     }
 
     // ============ NEON DATABASE INIT ============
@@ -1787,7 +1863,7 @@
       'admin-tools-desc':'إدارة المحتوى والأقسام والصفوف من مكان واحد.',
       'admin-logout-button':'🚪 تسجيل الخروج',
       'footer-text':'جميع الحقوق محفوظة © موقع رياضيات بلاد الشهوم – 2026',
-      'footer-credit':'تصميم وبرمجة الموقع التعليمية'
+      'footer-credit':'تصميم وبرمجة أ. خديجة الشهومي'
     };
 
     function applyLocalTextFallback() {
