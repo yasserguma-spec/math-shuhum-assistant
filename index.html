@@ -35,11 +35,20 @@
     .public-stat-card { border:1px solid #e2e8f0; background:#fff; border-radius:1.5rem; padding:1.25rem; box-shadow:0 8px 24px rgba(15,23,42,.06); }
     .public-stat-bar { height:12px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
     .public-stat-bar > span { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg,#2563eb,#7c3aed); transition:width .6s ease; }
-    .professional-hub-card { transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease; }
-    .professional-hub-card:hover { transform: translateY(-5px); box-shadow: 0 16px 34px rgba(15,23,42,.10); }
-    .professional-resource { transition: transform .2s ease, box-shadow .2s ease; }
-    .professional-resource:hover { transform: translateY(-3px); box-shadow: 0 12px 26px rgba(15,23,42,.08); }
-    .professional-filter-active { box-shadow: 0 8px 20px rgba(15,23,42,.10); transform: translateY(-1px); }
+
+    /* ===== Student Announcements Ticker ===== */
+    #student-announcements-section { display:none; }
+    #student-announcements-section.has-announcements { display:block; }
+    .student-announcements-shell { border:1px solid #dbeafe; background:linear-gradient(135deg,#eff6ff 0%,#ffffff 55%,#eef2ff 100%); box-shadow:0 8px 24px rgba(15,23,42,.06); }
+    .student-announcements-track-wrap { position:relative; overflow:hidden; direction:ltr; mask-image:linear-gradient(to right,transparent 0,#000 7%,#000 93%,transparent 100%); -webkit-mask-image:linear-gradient(to right,transparent 0,#000 7%,#000 93%,transparent 100%); }
+    .student-announcements-track { display:flex; width:max-content; animation:studentAnnouncementsMarquee 34s linear infinite; }
+    .student-announcements-track:hover { animation-play-state:paused; }
+    .student-announcement-item { direction:rtl; display:inline-flex; align-items:center; gap:.75rem; margin-left:2.5rem; white-space:nowrap; }
+    .student-announcement-dot { width:9px;height:9px;border-radius:999px;background:#2563eb;flex:none;box-shadow:0 0 0 5px #dbeafe; }
+    .student-announcement-link { color:#0f3b82; font-weight:800; }
+    .student-announcement-link:hover { color:#1d4ed8; }
+    @keyframes studentAnnouncementsMarquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+    @media (prefers-reduced-motion: reduce) { .student-announcements-track { animation:none; } }
   </style>
   <script src="/_sdk/b3bf9e8ac58e6ad6.data_sdk.js" type="text/javascript" integrity="sha512-otc1u9NYq9Ms5Jt//7vmhrrqR5CLPr8Jdgs6741gqniClfLMcfmC+jK/cKuQdhLv6G0esJ/FzaMS9tv0T/vj/Q=="></script>
   <script src="/_sdk/a27879be4562f807.resizing_sdk.js" type="text/javascript" integrity="sha512-trcxRwz+QLrzK0Dqg95xqVRryR7WtWui2YopXyzOIr3WMde3j/xCRgT63/b/EAg7klDsAOuHzoRgoryhwm8QFw=="></script>
@@ -69,6 +78,18 @@
     <div class="relative z-10 max-w-3xl mx-auto px-4">
      <h1 data-template-id="hero-title" class="canva-text font-extrabold text-white mb-4"></h1>
      <p data-template-id="hero-desc" class="canva-text text-white/90 leading-relaxed"></p>
+    </div>
+   </section>
+   <!-- ===== STUDENT ANNOUNCEMENTS TICKER ===== -->
+   <section id="student-announcements-section" class="max-w-7xl mx-auto px-4 pt-6" aria-label="إعلانات الطلبة">
+    <div class="student-announcements-shell rounded-2xl px-4 py-3 md:px-5">
+     <div class="flex items-center gap-3">
+      <div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-lg text-white shadow-sm" aria-hidden="true">📢</div>
+      <div class="min-w-0 flex-1">
+       <div class="mb-1 flex items-center gap-2"><span class="text-sm font-extrabold text-blue-950">إعلانات الطلبة</span><span class="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">جديد</span></div>
+       <div class="student-announcements-track-wrap"><div id="student-announcements-track" class="student-announcements-track"></div></div>
+      </div>
+     </div>
     </div>
    </section>
    <section class="max-w-7xl mx-auto px-4 py-12">
@@ -225,68 +246,20 @@
    <div class="max-w-7xl mx-auto px-4 pt-4"><a href="#home" onclick="navigateTo('home')" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm shadow-sm hover:shadow-md transition bg-blue-900 text-white"><i data-lucide="arrow-right" class="w-4 h-4"></i><span>العودة إلى الرئيسية</span></a>
    </div>
    <section data-template-id="professional-banner" class="canva-section py-12 md:py-16 text-center relative overflow-hidden">
-    <div class="absolute -left-6 -bottom-8 text-white/10 text-8xl font-serif select-none">✦</div>
-    <div class="absolute right-8 top-3 text-white/10 text-6xl font-serif select-none">◆</div>
-    <div class="relative z-10 max-w-4xl mx-auto px-4">
-     <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15 text-4xl shadow-lg">👩‍🏫</div>
-     <h1 id="professional-page-title" class="font-extrabold text-white mb-4 text-3xl md:text-4xl"></h1>
-     <p data-template-id="professional-banner-desc" class="canva-text text-white/90 leading-relaxed text-base md:text-lg">مساحة مهنية متكاملة لدعم المعلمات وقيادة المدرسة بالموارد والنماذج والممارسات التي تسهم في التطوير المستمر.</p>
+    <div class="absolute -left-6 -bottom-8 text-white/10 text-8xl font-serif select-none">
+     ✦
+    </div>
+    <div class="absolute right-8 top-3 text-white/10 text-6xl font-serif select-none">
+     ◆
+    </div>
+    <div class="relative z-10 max-w-3xl mx-auto px-4">
+     <h1 id="professional-page-title" class="font-extrabold text-white mb-4 text-3xl"></h1>
+     <p data-template-id="professional-banner-desc" class="canva-text text-white/90 leading-relaxed"></p>
     </div>
    </section>
    <main class="max-w-7xl mx-auto px-4 py-10">
-    <section class="mb-10">
-     <div class="mb-6 text-center">
-      <span class="inline-block rounded-full bg-cyan-50 px-4 py-1 text-sm font-bold text-cyan-700">بوابة التمكين المهني</span>
-      <h2 class="mt-3 text-2xl md:text-3xl font-extrabold text-blue-950">مسارات التطوير والقيادة</h2>
-      <p class="mt-2 text-slate-500">اختاري المسار المناسب للوصول إلى الموارد المهنية بسرعة.</p>
-     </div>
-     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <button type="button" onclick="setProfessionalFilter('teachers')" id="professional-filter-teachers" class="professional-hub-card rounded-3xl border border-cyan-100 bg-gradient-to-br from-cyan-50 via-white to-blue-50 p-7 text-right shadow-sm">
-       <div class="flex items-start justify-between gap-4">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-600 text-3xl text-white">👩‍🏫</div>
-        <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-cyan-700 shadow-sm">للمعلمات</span>
-       </div>
-       <h3 class="mt-5 text-xl font-extrabold text-blue-950">تمكين المعلمات</h3>
-       <p class="mt-2 leading-7 text-slate-600">استراتيجيات تدريس الرياضيات، أوراق العمل، النماذج، التقويم، الخطط العلاجية والإثرائية، وأفكار الممارسات الصفية المتميزة.</p>
-       <span class="mt-4 inline-flex items-center gap-2 font-bold text-cyan-700">استعراض موارد المعلمات ←</span>
-      </button>
-      <button type="button" onclick="setProfessionalFilter('leadership')" id="professional-filter-leadership" class="professional-hub-card rounded-3xl border border-indigo-100 bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-7 text-right shadow-sm">
-       <div class="flex items-start justify-between gap-4">
-        <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-indigo-600 text-3xl text-white">🏫</div>
-        <span class="rounded-full bg-white px-3 py-1 text-xs font-bold text-indigo-700 shadow-sm">لقيادة المدرسة</span>
-       </div>
-       <h3 class="mt-5 text-xl font-extrabold text-blue-950">قيادة المدرسة</h3>
-       <p class="mt-2 leading-7 text-slate-600">خطط التحسين، المتابعة، مؤشرات الأداء، الاجتماعات، المبادرات، النماذج القيادية، وأدوات دعم جودة العمل المدرسي.</p>
-       <span class="mt-4 inline-flex items-center gap-2 font-bold text-indigo-700">استعراض موارد القيادة ←</span>
-      </button>
-     </div>
-    </section>
-
-    <section class="mb-10 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-     <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-      <div>
-       <h2 class="text-xl font-extrabold text-blue-950">📚 الموارد المهنية</h2>
-       <p id="professional-filter-label" class="mt-1 text-sm text-slate-500">جميع الموارد المهنية المتاحة.</p>
-      </div>
-      <button type="button" onclick="setProfessionalFilter('all')" id="professional-filter-all" class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-blue-700">عرض جميع الموارد</button>
-     </div>
-    </section>
-
     <div id="professional-content-list" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
     <p id="professional-empty" class="text-center text-slate-500 py-8">لا توجد محتويات حاليًا في هذا القسم.</p>
-
-    <section class="mt-12 rounded-3xl bg-gradient-to-l from-blue-950 to-indigo-800 p-7 text-white shadow-lg">
-     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-      <div class="md:col-span-2">
-       <h2 class="text-2xl font-extrabold">🌟 نحو بيئة مدرسية متطورة</h2>
-       <p class="mt-2 leading-7 text-white/85">تجمع هذه البوابة الموارد المهنية في مساحة واحدة لدعم الممارسة التعليمية، وتبادل الخبرات، وتعزيز التخطيط والمتابعة والتحسين المستمر.</p>
-      </div>
-      <div class="rounded-2xl bg-white/10 p-5 text-center">
-       <div class="text-4xl">🤝</div>
-       <p class="mt-2 font-bold">معًا نحو التميز</p>
-      </div>
-     </div>
-    </section>
    </main>
   </div><!-- ===== GENERIC SECTION PAGE ===== -->
   <div id="page-generic-section" class="page-view">
@@ -389,6 +362,9 @@
     </button>
     <button onclick="openAdminWorkspace('achievements')" type="button" class="admin-action-card">
       <span class="admin-action-icon bg-rose-100 text-rose-700">🏆</span><strong class="text-blue-950">إدارة مجيدات الرياضيات</strong><span class="text-xs text-slate-500">إضافة الطالبات والمراكز والصور</span>
+    </button>
+    <button onclick="openStudentAnnouncementsAdmin()" type="button" class="admin-action-card">
+      <span class="admin-action-icon bg-sky-100 text-sky-700">📢</span><strong class="text-blue-950">إعلانات الطلبة</strong><span class="text-xs text-slate-500">إضافة وتعديل وحذف الإعلانات</span>
     </button>
    </div>
    <div class="mt-5 rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-sm text-blue-900">
@@ -509,6 +485,7 @@
     let databaseLoading = false;
     let sectionGradesCache = {};
     let contentTypesCache = {};
+    const STUDENT_ANNOUNCEMENTS_SECTION = 'student-announcements';
 
     // Icons and colors for sections (by index fallback)
     const sectionIcons = ['book-open','notebook-pen','lightbulb','library','star','bot','briefcase','folder','layers'];
@@ -625,7 +602,7 @@
 
         siteSections = (Array.isArray(sectionsData.sections) ? sectionsData.sections : [])
           .map(normalizeSectionRecord)
-          .filter(row => row.is_active !== false);
+          .filter(row => row.is_active !== false && row.grade !== STUDENT_ANNOUNCEMENTS_SECTION);
 
         siteGrades = (Array.isArray(gradesData.grades) ? gradesData.grades : [])
           .map(normalizeGradeRecord)
@@ -645,6 +622,7 @@
 
         renderHomeSections();
         renderNavLinks();
+        renderStudentAnnouncements();
         renderAchievements();
         renderGradesGrid();
         if (document.getElementById('page-professional')?.classList.contains('active')) renderProfessionalContent();
@@ -753,6 +731,42 @@
       else if (hash === 'stats') navigateTo('stats');
     }
     window.addEventListener('hashchange', handleHash);
+
+    // ============ STUDENT ANNOUNCEMENTS ============
+    function getStudentAnnouncements() {
+      return Array.isArray(contentRecords)
+        ? contentRecords
+            .filter(item => item.section === STUDENT_ANNOUNCEMENTS_SECTION && item.is_active !== false)
+            .sort((a,b) => Number(a.sort_order || 0) - Number(b.sort_order || 0) || new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+        : [];
+    }
+
+    function renderStudentAnnouncements() {
+      const section = document.getElementById('student-announcements-section');
+      const track = document.getElementById('student-announcements-track');
+      if (!section || !track) return;
+
+      const items = getStudentAnnouncements();
+      if (!items.length) {
+        section.classList.remove('has-announcements');
+        track.innerHTML = '';
+        return;
+      }
+
+      const html = items.map(item => {
+        const title = escapeHtml(item.title || '');
+        const description = escapeHtml(item.description || '');
+        const text = description ? `${title} — ${description}` : title;
+        const safeLink = String(item.link || '').trim();
+        const content = safeLink
+          ? `<a class="student-announcement-link" href="${escapeHtml(safeLink)}" target="_blank" rel="noopener noreferrer">${text}</a>`
+          : `<span class="student-announcement-link">${text}</span>`;
+        return `<span class="student-announcement-item"><span class="student-announcement-dot"></span>${content}</span>`;
+      }).join('');
+
+      track.innerHTML = html + html;
+      section.classList.add('has-announcements');
+    }
 
     // ============ HOME PAGE SECTIONS ============
     function renderHomeSections() {
@@ -933,79 +947,22 @@
     }
 
     // ============ PROFESSIONAL / GENERIC SECTION ============
-    let professionalFilter = 'all';
-
-    function getProfessionalSectionId() {
-      const proSec = siteSections.find(s => s.title.includes('التنمية المهنية'));
-      return proSec ? proSec.grade : 'professional-development';
-    }
-
-    function professionalFilterMatch(item) {
-      const type = String(item.content_type || '').trim();
-      const title = String(item.title || '').toLowerCase();
-      const description = String(item.description || '').toLowerCase();
-      const combined = `${type} ${title} ${description}`;
-      if (professionalFilter === 'teachers') {
-        return ['للمعلمات','معلمات','تدريس','صفية','تعليم','ورقة عمل','استراتيجية','تقويم','علاجية','إثرائية'].some(k => combined.includes(k.toLowerCase()));
-      }
-      if (professionalFilter === 'leadership') {
-        return ['لقيادة المدرسة','قيادة','إدارة','تحسين','متابعة','مؤشرات','اجتماعات','مبادرات','خطة'].some(k => combined.includes(k.toLowerCase()));
-      }
-      return true;
-    }
-
-    function setProfessionalFilter(filter) {
-      professionalFilter = filter || 'all';
-      renderProfessionalContent();
-      const section = document.getElementById('professional-content-list');
-      if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
     function renderProfessionalContent() {
+      // Find professional section id
       const proSec = siteSections.find(s => s.title.includes('التنمية المهنية'));
-      const sectionId = proSec ? proSec.grade : 'professional-development';
-      const titleEl = document.getElementById('professional-page-title');
-      if (titleEl) titleEl.textContent = proSec ? proSec.title : 'التنمية المهنية';
-
-      const allItems = contentRecords.filter(i => String(i.section || '') === String(sectionId));
-      const items = allItems.filter(professionalFilterMatch);
+      const sectionId = proSec ? proSec.grade : 'professional';
+      document.getElementById('professional-page-title').textContent = proSec ? proSec.title : 'التنمية المهنية';
+      const items = contentRecords.filter(i => i.section === sectionId);
       const container = document.getElementById('professional-content-list');
       const empty = document.getElementById('professional-empty');
-      const label = document.getElementById('professional-filter-label');
-      if (!container || !empty) return;
-
-      const labels = { all: 'جميع الموارد المهنية المتاحة.', teachers: 'الموارد المصنفة أو المرتبطة بتمكين المعلمات والممارسة الصفية.', leadership: 'الموارد المصنفة أو المرتبطة بقيادة المدرسة والتخطيط والمتابعة والتحسين.' };
-      if (label) label.textContent = labels[professionalFilter] || labels.all;
-
-      ['all','teachers','leadership'].forEach(key => {
-        const el = document.getElementById('professional-filter-' + key);
-        if (!el) return;
-        el.classList.toggle('professional-filter-active', professionalFilter === key);
-      });
-
-      if (!items.length) {
-        empty.textContent = allItems.length ? 'لا توجد موارد مطابقة لهذا المسار حاليًا. يمكنك عرض جميع الموارد.' : 'لا توجد محتويات حاليًا في هذا القسم.';
+      if (items.length) {
+        empty.classList.add('hidden');
+        container.innerHTML = items.map(i => `<div class="card-hover rounded-2xl border border-cyan-100 bg-white p-6 shadow-sm"><div class="w-12 h-12 mx-auto bg-cyan-100 rounded-xl flex items-center justify-center mb-3"><i data-lucide="file-text" class="w-6 h-6 text-cyan-600"></i></div><h3 class="font-bold text-blue-950 text-center">${escapeHtml(i.title)}</h3><p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}</div>`).join('');
+        lucide.createIcons();
+      } else {
         empty.classList.remove('hidden');
         container.innerHTML = '';
-        return;
       }
-
-      empty.classList.add('hidden');
-      container.innerHTML = items.map(i => {
-        const type = String(i.content_type || 'مورد مهني');
-        const icon = type.includes('فيديو') ? 'video' : type.includes('ورقة') ? 'file-text' : type.includes('قيادة') || type.includes('إدارة') ? 'school' : type.includes('رابط') ? 'link' : 'briefcase-business';
-        const badgeClass = professionalFilter === 'leadership' ? 'bg-indigo-50 text-indigo-700' : professionalFilter === 'teachers' ? 'bg-cyan-50 text-cyan-700' : 'bg-blue-50 text-blue-700';
-        return `<article class="professional-resource rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100"><i data-lucide="${escapeHtml(icon)}" class="h-7 w-7 text-blue-600"></i></div>
-          <div class="mt-4 text-center">
-            <span class="inline-block rounded-full px-3 py-1 text-xs font-bold ${badgeClass}">${escapeHtml(type)}</span>
-            <h3 class="mt-3 font-extrabold text-blue-950">${escapeHtml(i.title || '')}</h3>
-            <p class="mt-2 text-sm leading-6 text-slate-500">${escapeHtml(i.description || '')}</p>
-            ${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700">فتح المورد <span>←</span></a>` : '<span class="mt-4 inline-block text-xs font-semibold text-slate-400">المورد متاح داخل البوابة</span>'}
-          </div>
-        </article>`;
-      }).join('');
-      lucide.createIcons();
     }
 
     async function renderMathLibraryTypes() {
@@ -1320,6 +1277,43 @@
       }
     }
 
+    async function ensureStudentAnnouncementsSection() {
+      try {
+        const response = await fetch('/api/sections', {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.ok && data.success && Array.isArray(data.sections)) {
+          const exists = data.sections.some(s => String(s.slug || s.grade || '') === STUDENT_ANNOUNCEMENTS_SECTION);
+          if (exists) return true;
+        }
+
+        const createResponse = await fetch('/api/sections', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({
+            name: 'شريط إعلانات الطلبة',
+            slug: STUDENT_ANNOUNCEMENTS_SECTION,
+            icon: 'megaphone',
+            color: 'blue',
+            sort_order: 9999,
+            is_active: true
+          })
+        });
+        const createData = await createResponse.json().catch(() => ({}));
+        if (!createResponse.ok || !createData.success) {
+          console.error('[رياضيات بلاد الشهوم] Announcement section setup failed:', createData.error || createResponse.status);
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error('[رياضيات بلاد الشهوم] Announcement section setup error:', error);
+        return false;
+      }
+    }
+
     async function handleAdminLogin(event) {
       event.preventDefault();
       const input = document.getElementById('admin-password');
@@ -1361,6 +1355,8 @@
         }
 
         if (input) input.value = '';
+        await ensureStudentAnnouncementsSection();
+        await loadDatabaseData();
         closeAdminModal();
         document.getElementById('admin-tools').classList.remove('hidden');
         document.getElementById('admin-tools').scrollIntoView({ behavior: 'smooth' });
@@ -1392,6 +1388,8 @@
     async function initializeAdminState() {
       const authenticated = await checkAdminSession();
       if (authenticated) {
+        await ensureStudentAnnouncementsSection();
+        await loadDatabaseData();
         document.getElementById('admin-tools').classList.remove('hidden');
       } else {
         document.getElementById('admin-tools').classList.add('hidden');
@@ -1400,13 +1398,16 @@
 
     let currentAdminMode = 'edit';
     let editingRecord = null;
+    let currentAdminFilterSection = '';
 
     function openAdminWorkspace(mode) {
       currentAdminMode = mode;
+      if (mode !== 'announcements') currentAdminFilterSection = '';
       const ws = document.getElementById('admin-workspace');
       ws.classList.remove('hidden');
-      document.getElementById('admin-editor').classList.toggle('hidden', mode !== 'add' && mode !== 'edit');
-      document.getElementById('content-list-panel').classList.toggle('hidden', mode !== 'edit' && mode !== 'delete');
+      const isAnnouncements = mode === 'announcements';
+      document.getElementById('admin-editor').classList.toggle('hidden', mode !== 'add' && mode !== 'edit' && !isAnnouncements);
+      document.getElementById('content-list-panel').classList.toggle('hidden', mode !== 'edit' && mode !== 'delete' && !isAnnouncements);
       document.getElementById('management-tabs').classList.toggle('hidden', mode !== 'manage');
       document.getElementById('achievement-workspace').classList.toggle('hidden', mode !== 'achievements');
        document.getElementById('statistics-workspace').classList.toggle('hidden', mode !== 'stats');
@@ -1422,17 +1423,44 @@
         populateSectionSelect();
         handleSectionChange();
       }
+      if (mode === 'announcements') {
+        currentAdminFilterSection = STUDENT_ANNOUNCEMENTS_SECTION;
+        editingRecord = null;
+        document.getElementById('content-form').reset();
+        document.getElementById('editor-heading').textContent = 'إضافة إعلان للطلبة';
+        populateSectionSelect();
+        const announcementSelect = document.getElementById('admin-content-section');
+        if (announcementSelect) announcementSelect.value = STUDENT_ANNOUNCEMENTS_SECTION;
+        handleSectionChange();
+        renderManagedContent('announcements');
+      }
       if (mode === 'edit' || mode === 'delete') renderManagedContent(mode);
       if (mode === 'manage') showManagementTab('sections');
       ws.scrollIntoView({ behavior: 'smooth' });
     }
-    function closeAdminWorkspace() { document.getElementById('admin-workspace').classList.add('hidden'); }
+    async function openStudentAnnouncementsAdmin() {
+      if (!await checkAdminSession()) {
+        openAdminModal();
+        return;
+      }
+      await ensureStudentAnnouncementsSection();
+      await loadDatabaseData();
+      openAdminWorkspace('announcements');
+    }
+
+    function closeAdminWorkspace() {
+      currentAdminFilterSection = '';
+      document.getElementById('admin-workspace').classList.add('hidden');
+    }
 
     function populateSectionSelect() {
       const sel = document.getElementById('admin-content-section');
       if (!sel) return;
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       sel.innerHTML = sections.map(s => `<option value="${escapeHtml(s.grade)}">${escapeHtml(s.title)}</option>`).join('');
+      if (!Array.from(sel.options).some(option => option.value === STUDENT_ANNOUNCEMENTS_SECTION)) {
+        sel.insertAdjacentHTML('beforeend', `<option value="${STUDENT_ANNOUNCEMENTS_SECTION}">📢 شريط إعلانات الطلبة</option>`);
+      }
       if (!sel.value && sections.length) sel.value = sections[0].grade;
     }
     async function fetchSectionStructure(sectionSlug) {
@@ -1473,17 +1501,25 @@
       else if (list.length) sel.value = list[0].grade_slug || list[0].grade || '';
     }
 
-    const professionalTypes = ['للمعلمات', 'لقيادة المدرسة', 'ورقة عمل', 'ملف', 'فيديو', 'رابط'];
+    const professionalTypes = ['ورقة عمل', 'ملف', 'فيديو', 'رابط'];
     const generalTypes = ['درس', 'ملخص', 'فيديو', 'رابط خارجي', 'اختبار', 'عرض', 'نشاط'];
 
     async function handleSectionChange(preferredGrade = '', preferredType = '') {
       const sectionId = document.getElementById('admin-content-section')?.value || '';
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       const sec = sections.find(s => s.grade === sectionId);
+      const isAnnouncement = sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
       const isPro = sec && sec.title.includes('التنمية المهنية');
       const gradeLabel = document.getElementById('grade-label');
       const typeSelect = document.getElementById('admin-content-type');
       if (!gradeLabel || !typeSelect) return;
+
+      if (isAnnouncement) {
+        gradeLabel.classList.add('hidden');
+        typeSelect.innerHTML = '<option value="إعلان طلابي">إعلان طلابي</option>';
+        typeSelect.value = 'إعلان طلابي';
+        return;
+      }
 
       if (isPro) {
         gradeLabel.classList.add('hidden');
@@ -1503,7 +1539,11 @@
     function renderManagedContent(mode) {
       const list = document.getElementById('managed-content-list');
       if (!list) return;
-      list.innerHTML = contentRecords.length ? contentRecords.map((item, i) => `<div class="rounded-2xl border bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-4"><div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || '')}</p></div>${mode === 'edit' ? `<button type="button" onclick="editItem('${item.__backendId}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">تعديل</button>` : `<button type="button" onclick="requestDelete('${item.__backendId}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button>`}</div></div>`).join('') : '<p class="text-slate-500 p-4">لا توجد محتويات.</p>';
+      const source = currentAdminFilterSection
+        ? contentRecords.filter(item => item.section === currentAdminFilterSection)
+        : contentRecords;
+      const editMode = mode === 'edit' || mode === 'announcements';
+      list.innerHTML = source.length ? source.map((item) => `<div class="rounded-2xl border bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-4"><div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || '')}</p></div>${editMode ? `<button type="button" onclick="editItem('${item.__backendId}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">تعديل</button>` : `<button type="button" onclick="requestDelete('${item.__backendId}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button>`}</div></div>`).join('') : '<p class="rounded-xl bg-slate-50 p-5 text-center text-slate-500">لا توجد إعلانات مضافة حاليًا.</p>';
     }
 
     function editItem(backendId) {
@@ -1517,7 +1557,7 @@
       handleSectionChange(item.grade || '', item.content_type || '');
       document.getElementById('admin-content-link').value = item.link || '';
       document.getElementById('admin-content-image').value = item.image_url || '';
-      document.getElementById('editor-heading').textContent = 'تعديل المحتوى';
+      document.getElementById('editor-heading').textContent = item.section === STUDENT_ANNOUNCEMENTS_SECTION ? 'تعديل إعلان للطلبة' : 'تعديل المحتوى';
       document.getElementById('admin-editor').classList.remove('hidden');
     }
 
@@ -1564,12 +1604,13 @@
       const sectionId = document.getElementById('admin-content-section').value;
       const sections = siteSections.length ? siteSections : defaultSectionRecords.map(([title,id,icon,color],i)=>({title,grade:id,content_type:icon,link:color,description:String(i)}));
       const sec = sections.find(s => s.grade === sectionId);
+      const isAnnouncement = sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
       const isPro = sec && sec.title.includes('التنمية المهنية');
       const payload = {
         title: document.getElementById('admin-content-title').value.trim(),
         description: document.getElementById('admin-content-description').value.trim(),
         section: sectionId,
-        grade: isPro ? '' : document.getElementById('admin-content-grade').value,
+        grade: (isPro || isAnnouncement) ? '' : document.getElementById('admin-content-grade').value,
         content_type: document.getElementById('admin-content-type').value,
         link: document.getElementById('admin-content-link').value.trim(),
         image_url: document.getElementById('admin-content-image').value.trim(),
@@ -1591,7 +1632,9 @@
         document.getElementById('content-form').reset();
         handleSectionChange();
         await loadDatabaseData();
+        renderStudentAnnouncements();
         if (currentAdminMode === 'add') renderManagedContent('edit');
+        if (currentAdminMode === 'announcements') renderManagedContent('announcements');
       } catch (error) {
         console.error('[رياضيات بلاد الشهوم] Content save error:', error);
         showStatus(error.message || 'تعذر الحفظ', false);
@@ -2264,6 +2307,7 @@
     applyLocalTextFallback();
     renderHomeSections();
     renderNavLinks();
+    renderStudentAnnouncements();
     renderAchievements();
     trackRealVisit();
     initializeAdminState();
