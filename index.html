@@ -1562,10 +1562,15 @@
     const generalTypes = ['درس', 'ملخص', 'فيديو', 'رابط خارجي', 'اختبار', 'عرض', 'نشاط'];
 
     async function populateContentTypeSelect(preferredType = '') {
-      const sectionId =
-        document.getElementById('admin-content-section')?.value || '';
-      const gradeId =
-        document.getElementById('admin-content-grade')?.value || '';
+      const sectionId = String(
+        document.getElementById('admin-content-section')?.value || ''
+      ).trim();
+
+      const gradeSelect = document.getElementById('admin-content-grade');
+      const gradeId = String(gradeSelect?.value || '').trim();
+      const typeSelect = document.getElementById('admin-content-type');
+
+      if (!typeSelect) return;
 
       const sections = siteSections.length
         ? siteSections
@@ -1576,12 +1581,15 @@
             link: color
           }));
 
-      const sec = sections.find(s => s.grade === sectionId);
-      const isAnnouncement = sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
-      const isPro = sec && sec.title.includes('التنمية المهنية');
+      const sec = sections.find(
+        s => String(s.grade || s.slug || s.id) === sectionId
+      );
 
-      const typeSelect = document.getElementById('admin-content-type');
-      if (!typeSelect) return;
+      const isAnnouncement =
+        sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
+
+      const isPro =
+        sec && String(sec.title || '').includes('التنمية المهنية');
 
       if (isAnnouncement) {
         typeSelect.innerHTML =
@@ -1597,41 +1605,141 @@
           )
           .join('');
 
-        if (preferredType) typeSelect.value = preferredType;
+        if (preferredType) {
+          if (!Array.from(typeSelect.options).some(
+            option => option.value === String(preferredType)
+          )) {
+            typeSelect.insertAdjacentHTML(
+              'beforeend',
+              `<option value="${escapeHtml(preferredType)}">${escapeHtml(preferredType)} (المحفوظ)</option>`
+            );
+          }
+          typeSelect.value = preferredType;
+        }
+
         return;
       }
 
-      const structure = await fetchSectionStructure(sectionId, gradeId);
+      /*
+       * مهم:
+       * لا نستخدم generalTypes إذا فشل تحميل الأنواع المخصصة بصمت.
+       * نحاول قراءة قاعدة البيانات مباشرة في كل تغيير للصف،
+       * ثم نضع الأنواع الخاصة بالصف في القائمة.
+       */
+      if (!sectionId || !gradeId) {
+        typeSelect.innerHTML =
+          '<option value="">اختر الصف أولًا</option>';
+        return;
+      }
 
-      // إذا كان للصف أنواع مخصصة، نستخدمها. وإذا لم توجد نستخدم الأنواع
-      // العامة القديمة حتى لا تتعطل المحتويات الموجودة.
-      const types = structure.types.length
-        ? structure.types
-        : generalTypes.map(name => ({ name }));
+      typeSelect.disabled = true;
+      typeSelect.innerHTML =
+        '<option value="">جاري تحميل أنواع المحتوى...</option>';
 
-      typeSelect.innerHTML = types
-        .map(t => `
-          <option value="${escapeHtml(t.name || t.title || '')}">
-            ${escapeHtml((t.icon ? t.icon + ' ' : '') + (t.name || t.title || ''))}
-          </option>
-        `)
-        .join('');
+      try {
+        const url =
+          `/api/structure?section=${encodeURIComponent(sectionId)}` +
+          `&grade=${encodeURIComponent(gradeId)}` +
+          `&type=types&_=${Date.now()}`;
 
-      if (preferredType) {
-        const preferredExists = types.some(t =>
-          String(t.name || t.title || '').trim() === String(preferredType).trim()
+        const response = await fetch(url, {
+          method: 'GET',
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          },
+          cache: 'no-store'
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || !data.success) {
+          throw new Error(
+            data.error || 'تعذر تحميل أنواع المحتوى الخاصة بالصف.'
+          );
+        }
+
+        const types = Array.isArray(data.content_types)
+          ? data.content_types.filter(
+              t => t && t.is_active !== false && String(t.name || t.title || '').trim()
+            )
+          : [];
+
+        /*
+         * تحديث الكاش بالقيمة الفعلية القادمة من قاعدة البيانات.
+         */
+        const cacheKey = `${sectionId}::${gradeId}`;
+        contentTypesCache[cacheKey] = types;
+
+        /*
+         * لا نستبدل الأنواع الجديدة بالأنواع العامة.
+         * إذا لم توجد أنواع مخصصة بعد، فقط عندها نعرض الأنواع
+         * القديمة كحل مؤقت للمحتوى القديم.
+         */
+        const finalTypes = types.length
+          ? types
+          : generalTypes.map(name => ({ name }));
+
+        typeSelect.innerHTML = finalTypes
+          .map(t => {
+            const name = String(t.name || t.title || '').trim();
+            const icon = String(t.icon || '').trim();
+
+            return `
+              <option value="${escapeHtml(name)}">
+                ${escapeHtml((icon ? icon + ' ' : '') + name)}
+              </option>
+            `;
+          })
+          .join('');
+
+        if (!finalTypes.length) {
+          typeSelect.innerHTML =
+            '<option value="">لا توجد أنواع محتوى لهذا الصف</option>';
+        }
+
+        /*
+         * عند التعديل:
+         * نختار النوع المحفوظ حرفيًا.
+         */
+        if (preferredType) {
+          const preferred = String(preferredType).trim();
+
+          const exists = Array.from(typeSelect.options).some(
+            option => String(option.value).trim() === preferred
+          );
+
+          if (!exists) {
+            typeSelect.insertAdjacentHTML(
+              'beforeend',
+              `<option value="${escapeHtml(preferred)}">${escapeHtml(preferred)} (المحفوظ)</option>`
+            );
+          }
+
+          typeSelect.value = preferred;
+        }
+
+      } catch (error) {
+        console.error(
+          '[رياضيات بلاد الشهوم] Content types load error:',
+          error
         );
 
-        // عند تعديل محتوى قديم أو محتوى أُنشئ قبل ربط الأنواع بالصف،
-        // نحتفظ بالنوع المحفوظ ولا نستبدله بالنوع الافتراضي.
-        if (!preferredExists) {
+        /*
+         * لا نخفي الخطأ باستبدال الأنواع الجديدة بأنواع قديمة.
+         */
+        typeSelect.innerHTML =
+          '<option value="">تعذر تحميل أنواع المحتوى</option>';
+
+        if (preferredType) {
           typeSelect.insertAdjacentHTML(
             'beforeend',
             `<option value="${escapeHtml(preferredType)}">${escapeHtml(preferredType)} (المحفوظ)</option>`
           );
+          typeSelect.value = preferredType;
         }
-
-        typeSelect.value = preferredType;
+      } finally {
+        typeSelect.disabled = false;
       }
     }
 
@@ -1809,6 +1917,14 @@
         description: document.getElementById('admin-content-description').value.trim(),
         section: sectionId,
         grade: (isPro || isAnnouncement) ? '' : document.getElementById('admin-content-grade').value,
+        grade_id: (isPro || isAnnouncement) ? null : (
+          siteGrades.find(g =>
+            String(g.grade || '') === String(document.getElementById('admin-content-grade').value) ||
+            String(g.slug || '') === String(document.getElementById('admin-content-grade').value) ||
+            String(g.id || '') === String(document.getElementById('admin-content-grade').value) ||
+            String(g.grade_id || '') === String(document.getElementById('admin-content-grade').value)
+          )?.id || document.getElementById('admin-content-grade').value
+        ),
         content_type: document.getElementById('admin-content-type').value,
         link: document.getElementById('admin-content-link').value.trim(),
         image_url: document.getElementById('admin-content-image').value.trim(),
@@ -2332,7 +2448,11 @@
         s => String(s.grade || s.slug || s.id) === String(sectionSlug)
       );
       const grade = (siteGrades || []).find(
-        g => String(g.grade || g.slug || g.id) === String(gradeSlug)
+        g =>
+          String(g.grade || '') === String(gradeSlug) ||
+          String(g.slug || '') === String(gradeSlug) ||
+          String(g.id || '') === String(gradeSlug) ||
+          String(g.grade_id || '') === String(gradeSlug)
       );
 
       panel.insertAdjacentHTML('afterbegin', `
@@ -2375,7 +2495,10 @@
             body: JSON.stringify({
               entity: 'content-type',
               section_id: section?.id,
-              grade_id: grade?.id || gradeSlug,
+              grade_id: grade?.id || grade?.grade_id || (
+                /^\d+$/.test(String(gradeSlug)) ? Number(gradeSlug) : gradeSlug
+              ),
+              grade: grade?.grade || grade?.slug || gradeSlug,
               name: document.getElementById('new-type-name').value.trim(),
               icon: document.getElementById('new-type-icon').value.trim(),
               description: document.getElementById('new-type-description').value.trim()
@@ -2444,7 +2567,10 @@
               entity: 'content-type',
               id: Number(id),
               section_id: section?.id,
-              grade_id: item.grade_id || gradeSlug,
+              grade_id: item.grade_id || (
+                /^\d+$/.test(String(gradeSlug)) ? Number(gradeSlug) : gradeSlug
+              ),
+              grade: item.grade_slug || gradeSlug,
               name: document.getElementById('edit-type-name').value.trim(),
               slug: item.slug,
               icon: document.getElementById('edit-type-icon').value.trim(),
