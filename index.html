@@ -1617,12 +1617,20 @@
         `)
         .join('');
 
-      if (
-        preferredType &&
-        types.some(t =>
-          String(t.name || t.title) === String(preferredType)
-        )
-      ) {
+      if (preferredType) {
+        const preferredExists = types.some(t =>
+          String(t.name || t.title || '').trim() === String(preferredType).trim()
+        );
+
+        // عند تعديل محتوى قديم أو محتوى أُنشئ قبل ربط الأنواع بالصف،
+        // نحتفظ بالنوع المحفوظ ولا نستبدله بالنوع الافتراضي.
+        if (!preferredExists) {
+          typeSelect.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${escapeHtml(preferredType)}">${escapeHtml(preferredType)} (المحفوظ)</option>`
+          );
+        }
+
         typeSelect.value = preferredType;
       }
     }
@@ -1689,19 +1697,66 @@
       list.innerHTML = source.length ? source.map((item) => `<div class="rounded-2xl border bg-white p-4"><div class="flex flex-wrap items-start justify-between gap-4"><div><strong class="text-blue-950">${escapeHtml(item.title || '')}</strong><p class="mt-1 text-sm text-slate-500">${escapeHtml(getSectionName(item.section))} · ${escapeHtml(item.grade || 'عام')} · ${escapeHtml(item.content_type || '')}</p></div>${editMode ? `<button type="button" onclick="editItem('${item.__backendId}')" class="rounded-xl bg-emerald-600 px-4 py-2 font-bold text-white">تعديل</button>` : `<button type="button" onclick="requestDelete('${item.__backendId}')" class="rounded-xl bg-rose-600 px-4 py-2 font-bold text-white">حذف</button>`}</div></div>`).join('') : '<p class="rounded-xl bg-slate-50 p-5 text-center text-slate-500">لا توجد إعلانات مضافة حاليًا.</p>';
     }
 
-    function editItem(backendId) {
-      editingRecord = contentRecords.find(r => r.__backendId === backendId);
+    async function editItem(backendId) {
+      editingRecord = contentRecords.find(r => String(r.__backendId) === String(backendId));
       if (!editingRecord) return;
+
       const item = editingRecord;
       populateSectionSelect();
+
+      const sectionSelect = document.getElementById('admin-content-section');
+      const gradeSelect = document.getElementById('admin-content-grade');
+      const typeSelect = document.getElementById('admin-content-type');
+
       document.getElementById('admin-content-title').value = item.title || '';
       document.getElementById('admin-content-description').value = item.description || '';
-      document.getElementById('admin-content-section').value = item.section || '';
-      handleSectionChange(item.grade || '', item.content_type || '');
+      sectionSelect.value = item.section || '';
+
+      /*
+       * مهم جدًا: ننتظر اكتمال تحميل الصف وأنواع المحتوى الخاصة به
+       * قبل اختيار النوع المحفوظ.
+       * هذا يمنع race condition كانت تجعل النوع يعود إلى النوع الافتراضي.
+       */
+      await handleSectionChange(item.grade || '', item.content_type || '');
+
+      if (item.section !== STUDENT_ANNOUNCEMENTS_SECTION) {
+        if (gradeSelect && item.grade) {
+          gradeSelect.value = item.grade;
+        }
+
+        // تأكيد أخير بعد اكتمال تحديث الصف.
+        await populateContentTypeSelect(item.content_type || '');
+      }
+
+      // إذا كان النوع المحفوظ غير موجود في الأنواع الحالية، نحتفظ به
+      // كخيار محدد بدل استبداله بنوع آخر.
+      if (typeSelect && item.content_type) {
+        const exists = Array.from(typeSelect.options).some(
+          option => String(option.value) === String(item.content_type)
+        );
+
+        if (!exists) {
+          typeSelect.insertAdjacentHTML(
+            'beforeend',
+            `<option value="${escapeHtml(item.content_type)}">${escapeHtml(item.content_type)} (المحفوظ)</option>`
+          );
+        }
+
+        typeSelect.value = item.content_type;
+      }
+
       document.getElementById('admin-content-link').value = item.link || '';
       document.getElementById('admin-content-image').value = item.image_url || '';
-      document.getElementById('editor-heading').textContent = item.section === STUDENT_ANNOUNCEMENTS_SECTION ? 'تعديل إعلان للطلبة' : 'تعديل المحتوى';
+      document.getElementById('editor-heading').textContent =
+        item.section === STUDENT_ANNOUNCEMENTS_SECTION
+          ? 'تعديل إعلان للطلبة'
+          : 'تعديل المحتوى';
+
       document.getElementById('admin-editor').classList.remove('hidden');
+      document.getElementById('admin-editor').scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
     }
 
     function requestDelete(backendId) {
@@ -2574,10 +2629,10 @@
       'cat-lessons-text':'الدروس',
       'cat-downloads-text':'الملخصات',
       'cat-videos-text':'فيديوهات تعليمية',
-      'cat-links-text':'روابط مفيدة',
+      'cat-links-text':'ألعاب تعليمية',
       'cat-tests-text':'الاختبارات',
       'cat-presentations-text':'العروض التقديمية',
-      'cat-activities-text':'أنشطة وتدريبات',
+      'cat-activities-text':'أنشطة وتدريبات ومشاريع',
       'workspace-title':'المحتوى',
       'workspace-empty':'مساحة فارغة جاهزة لإضافة المحتوى.',
       'assistant-title':'مساعد الرياضيات المدعوم بالذكاء الاصطناعي',
