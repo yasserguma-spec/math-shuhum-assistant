@@ -4,8 +4,21 @@ function send(res, status, body) {
   return res.status(status).json(body);
 }
 
+function cleanText(value, max = 5000) {
+  return String(value ?? '').trim().slice(0, max);
+}
+
+function makeSlug(value, fallback = 'item') {
+  const slug = cleanText(value, 180)
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '-')
+    .replace(/^-+|-+$/g, '');
+
+  return slug || `${fallback}-${Date.now()}`;
+}
+
 // =====================================================
-// التحقق من صلاحية المدير
+// التحقق من المدير
 // =====================================================
 
 async function requireAdmin(req) {
@@ -23,12 +36,10 @@ async function requireAdmin(req) {
       `${protocol}://${host}/api/admin/session`,
       {
         method: 'GET',
-
         headers: {
           Accept: 'application/json',
           ...(cookie ? { cookie } : {})
         },
-
         cache: 'no-store'
       }
     );
@@ -40,7 +51,6 @@ async function requireAdmin(req) {
     return data?.authenticated === true;
 
   } catch (error) {
-
     console.error(
       'Admin session check failed:',
       error
@@ -49,34 +59,6 @@ async function requireAdmin(req) {
     return false;
   }
 }
-
-
-// =====================================================
-// تنظيف النصوص
-// =====================================================
-
-function cleanText(value, max = 5000) {
-
-  return String(value ?? '')
-    .trim()
-    .slice(0, max);
-}
-
-
-// =====================================================
-// إنشاء Slug
-// =====================================================
-
-function makeSlug(value, fallback = 'item') {
-
-  const slug = cleanText(value, 180)
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, '-')
-    .replace(/^-+|-+$/g, '');
-
-  return slug || `${fallback}-${Date.now()}`;
-}
-
 
 // =====================================================
 // الحصول على ID القسم
@@ -103,7 +85,9 @@ async function resolveSectionId(value) {
       LIMIT 1
     `;
 
-    return rows[0]?.id ?? null;
+    if (rows[0]?.id) {
+      return rows[0].id;
+    }
   }
 
   const rows = await sql`
@@ -116,9 +100,8 @@ async function resolveSectionId(value) {
   return rows[0]?.id ?? null;
 }
 
-
 // =====================================================
-// الحصول على ID الصف
+// الحصول على ID الصف الحقيقي من جدول grades
 // =====================================================
 
 async function resolveGradeId(value) {
@@ -142,7 +125,9 @@ async function resolveGradeId(value) {
       LIMIT 1
     `;
 
-    return rows[0]?.id ?? null;
+    if (rows[0]?.id) {
+      return rows[0].id;
+    }
   }
 
   const rows = await sql`
@@ -155,30 +140,118 @@ async function resolveGradeId(value) {
   return rows[0]?.id ?? null;
 }
 
+// =====================================================
+// الحصول على grade_id الحقيقي من section_grades
+// =====================================================
+
+async function resolveGradeIdFromSectionGrade(
+  sectionGradeId,
+  sectionId
+) {
+
+  if (
+    sectionGradeId === null ||
+    sectionGradeId === undefined ||
+    sectionGradeId === ''
+  ) {
+    return null;
+  }
+
+  const id = Number(sectionGradeId);
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    return null;
+  }
+
+  const rows = await sql`
+    SELECT grade_id
+    FROM section_grades
+    WHERE id = ${id}
+      AND section_id = ${sectionId}
+      AND is_active = TRUE
+    LIMIT 1
+  `;
+
+  return rows[0]?.grade_id ?? null;
+}
 
 // =====================================================
-// تحويل علاقة القسم والصف
+// تحديد الصف لنوع المحتوى
+// =====================================================
+
+async function resolveContentTypeGrade(
+  body,
+  sectionId,
+  currentGradeId = null
+) {
+
+  if (
+    body.grade_id !== undefined &&
+    body.grade_id !== null &&
+    body.grade_id !== ''
+  ) {
+
+    return await resolveGradeId(
+      body.grade_id
+    );
+  }
+
+  if (
+    body.grade !== undefined &&
+    body.grade !== null &&
+    body.grade !== ''
+  ) {
+
+    return await resolveGradeId(
+      body.grade
+    );
+  }
+
+  if (
+    body.section_grade_id !== undefined &&
+    body.section_grade_id !== null &&
+    body.section_grade_id !== ''
+  ) {
+
+    return await resolveGradeIdFromSectionGrade(
+      body.section_grade_id,
+      sectionId
+    );
+  }
+
+  return currentGradeId ?? null;
+}
+
+// =====================================================
+// تحويل الصف داخل القسم
 // =====================================================
 
 function mapSectionGrade(row) {
 
   return {
-
     id: row.id,
 
     __backendId: String(row.id),
 
     section_id: row.section_id,
 
-    section_name: row.section_name || '',
+    section_name:
+      row.section_name || '',
 
-    section_slug: row.section_slug || '',
+    section_slug:
+      row.section_slug || '',
 
-    grade_id: row.grade_id,
+    grade_id:
+      row.grade_id,
 
-    grade_name: row.grade_name || '',
+    grade_name:
+      row.grade_name || '',
 
-    grade_slug: row.grade_slug || '',
+    grade_slug:
+      row.grade_slug || '',
 
     grade_number:
       row.grade_number !== null &&
@@ -197,7 +270,6 @@ function mapSectionGrade(row) {
   };
 }
 
-
 // =====================================================
 // تحويل نوع المحتوى
 // =====================================================
@@ -208,19 +280,26 @@ function mapContentType(row) {
 
     id: row.id,
 
-    __backendId: String(row.id),
+    __backendId:
+      String(row.id),
 
-    section_id: row.section_id,
+    section_id:
+      row.section_id,
 
-    section_name: row.section_name || '',
+    section_name:
+      row.section_name || '',
 
-    section_slug: row.section_slug || '',
+    section_slug:
+      row.section_slug || '',
 
-    grade_id: row.grade_id ?? null,
+    grade_id:
+      row.grade_id ?? null,
 
-    grade_name: row.grade_name || '',
+    grade_name:
+      row.grade_name || '',
 
-    grade_slug: row.grade_slug || '',
+    grade_slug:
+      row.grade_slug || '',
 
     grade_number:
       row.grade_number !== null &&
@@ -228,15 +307,20 @@ function mapContentType(row) {
         ? Number(row.grade_number)
         : null,
 
-    name: row.name || '',
+    name:
+      row.name || '',
 
-    title: row.name || '',
+    title:
+      row.name || '',
 
-    slug: row.slug || '',
+    slug:
+      row.slug || '',
 
-    icon: row.icon || '',
+    icon:
+      row.icon || '',
 
-    description: row.description || '',
+    description:
+      row.description || '',
 
     sort_order:
       Number(row.sort_order || 0),
@@ -249,27 +333,223 @@ function mapContentType(row) {
   };
 }
 
+// =====================================================
+// جلب أنواع المحتوى
+// =====================================================
+
+async function getSectionTypes(
+  sectionId,
+  gradeId = null,
+  gradeWasRequested = false
+) {
+
+  if (
+    gradeWasRequested &&
+    !gradeId
+  ) {
+    return [];
+  }
+
+  // -----------------------------------------------
+  // أنواع مرتبطة بصف محدد
+  // -----------------------------------------------
+
+  if (gradeWasRequested) {
+
+    return await sql`
+
+      SELECT
+
+        ct.id,
+
+        ct.section_id,
+
+        s.name AS section_name,
+
+        s.slug AS section_slug,
+
+        ct.grade_id,
+
+        g.name AS grade_name,
+
+        g.slug AS grade_slug,
+
+        g.grade_number,
+
+        ct.name,
+
+        ct.slug,
+
+        ct.icon,
+
+        ct.description,
+
+        ct.sort_order,
+
+        ct.is_active
+
+      FROM content_types ct
+
+      INNER JOIN sections s
+        ON s.id = ct.section_id
+
+      LEFT JOIN grades g
+        ON g.id = ct.grade_id
+
+      WHERE ct.section_id =
+        ${sectionId}
+
+        AND ct.grade_id =
+        ${gradeId}
+
+        AND ct.is_active = TRUE
+
+      ORDER BY
+
+        ct.sort_order ASC,
+
+        ct.id ASC
+    `;
+  }
+
+  // -----------------------------------------------
+  // الأنواع العامة فقط
+  // -----------------------------------------------
+
+  return await sql`
+
+    SELECT
+
+      ct.id,
+
+      ct.section_id,
+
+      s.name AS section_name,
+
+      s.slug AS section_slug,
+
+      ct.grade_id,
+
+      g.name AS grade_name,
+
+      g.slug AS grade_slug,
+
+      g.grade_number,
+
+      ct.name,
+
+      ct.slug,
+
+      ct.icon,
+
+      ct.description,
+
+      ct.sort_order,
+
+      ct.is_active
+
+    FROM content_types ct
+
+    INNER JOIN sections s
+      ON s.id = ct.section_id
+
+    LEFT JOIN grades g
+      ON g.id = ct.grade_id
+
+    WHERE ct.section_id =
+      ${sectionId}
+
+      AND ct.grade_id IS NULL
+
+      AND ct.is_active = TRUE
+
+    ORDER BY
+
+      ct.sort_order ASC,
+
+      ct.id ASC
+  `;
+}
 
 // =====================================================
-// GET
+// جلب نوع محتوى محدد
 // =====================================================
 
-export default async function handler(req, res) {
+async function getContentTypeById(id) {
+
+  const rows = await sql`
+
+    SELECT
+
+      ct.id,
+
+      ct.section_id,
+
+      s.name AS section_name,
+
+      s.slug AS section_slug,
+
+      ct.grade_id,
+
+      g.name AS grade_name,
+
+      g.slug AS grade_slug,
+
+      g.grade_number,
+
+      ct.name,
+
+      ct.slug,
+
+      ct.icon,
+
+      ct.description,
+
+      ct.sort_order,
+
+      ct.is_active
+
+    FROM content_types ct
+
+    INNER JOIN sections s
+      ON s.id = ct.section_id
+
+    LEFT JOIN grades g
+      ON g.id = ct.grade_id
+
+    WHERE ct.id = ${id}
+
+    LIMIT 1
+  `;
+
+  return rows[0] || null;
+}
+
+// =====================================================
+// API
+// =====================================================
+
+export default async function handler(
+  req,
+  res
+) {
 
   try {
 
     // =================================================
-    // GET — جلب الصفوف والأنواع
+    // GET
     // =================================================
 
     if (req.method === 'GET') {
 
+      const sectionValue =
+        req.query?.section_id ??
+        req.query?.section;
+
       const sectionId =
         await resolveSectionId(
-          req.query?.section_id ??
-          req.query?.section
+          sectionValue
         );
-
 
       const type =
         cleanText(
@@ -277,10 +557,9 @@ export default async function handler(req, res) {
           50
         );
 
-
-      // -----------------------------------------------
-      // صفوف قسم محدد
-      // -----------------------------------------------
+      // ===============================================
+      // الصفوف داخل القسم
+      // ===============================================
 
       if (
         type === 'grades' ||
@@ -290,15 +569,11 @@ export default async function handler(req, res) {
         if (!sectionId) {
 
           return send(res, 400, {
-
             success: false,
-
             error:
               'يجب تحديد القسم.'
-
           });
         }
-
 
         const rows = await sql`
 
@@ -332,7 +607,8 @@ export default async function handler(req, res) {
           INNER JOIN grades g
             ON g.id = sg.grade_id
 
-          WHERE sg.section_id = ${sectionId}
+          WHERE sg.section_id =
+            ${sectionId}
 
             AND sg.is_active = TRUE
 
@@ -345,23 +621,23 @@ export default async function handler(req, res) {
             sg.id ASC
         `;
 
-
         return send(res, 200, {
 
           success: true,
 
-          count: rows.length,
+          count:
+            rows.length,
 
           section_grades:
-            rows.map(mapSectionGrade)
-
+            rows.map(
+              mapSectionGrade
+            )
         });
       }
 
-
-      // -----------------------------------------------
-      // أنواع المحتوى لقسم محدد
-      // -----------------------------------------------
+      // ===============================================
+      // أنواع المحتوى
+      // ===============================================
 
       if (
         type === 'types' ||
@@ -371,129 +647,175 @@ export default async function handler(req, res) {
         if (!sectionId) {
 
           return send(res, 400, {
+            success: false,
+            error:
+              'يجب تحديد القسم.'
+          });
+        }
+
+        const hasGrade =
+
+          (
+            req.query?.grade_id !==
+              undefined &&
+
+            req.query?.grade_id !==
+              null &&
+
+            req.query?.grade_id !==
+              ''
+          )
+
+          ||
+
+          (
+            req.query?.grade !==
+              undefined &&
+
+            req.query?.grade !==
+              null &&
+
+            req.query?.grade !==
+              ''
+          )
+
+          ||
+
+          (
+            req.query?.section_grade_id !==
+              undefined &&
+
+            req.query?.section_grade_id !==
+              null &&
+
+            req.query?.section_grade_id !==
+              ''
+          );
+
+        let gradeId = null;
+
+        // ---------------------------------------------
+        // grade_id
+        // ---------------------------------------------
+
+        if (
+          req.query?.grade_id
+        ) {
+
+          gradeId =
+            await resolveGradeId(
+              req.query.grade_id
+            );
+        }
+
+        // ---------------------------------------------
+        // grade slug
+        // ---------------------------------------------
+
+        else if (
+          req.query?.grade
+        ) {
+
+          gradeId =
+            await resolveGradeId(
+              req.query.grade
+            );
+        }
+
+        // ---------------------------------------------
+        // section_grade_id
+        // ---------------------------------------------
+
+        else if (
+          req.query?.section_grade_id
+        ) {
+
+          gradeId =
+            await resolveGradeIdFromSectionGrade(
+              req.query.section_grade_id,
+              sectionId
+            );
+        }
+
+        if (
+          hasGrade &&
+          !gradeId
+        ) {
+
+          return send(res, 400, {
 
             success: false,
 
             error:
-              'يجب تحديد القسم.'
-
+              'الصف المحدد غير موجود.'
           });
         }
 
-        const gradeId =
-          await resolveGradeId(
-            req.query?.grade_id ??
-            req.query?.grade
+        const rows =
+          await getSectionTypes(
+            sectionId,
+            gradeId,
+            hasGrade
           );
-
-
-        const rows = await sql`
-
-          SELECT
-
-            ct.id,
-
-            ct.section_id,
-
-            s.name AS section_name,
-
-            s.slug AS section_slug,
-
-            ct.grade_id,
-
-            g.name AS grade_name,
-
-            g.slug AS grade_slug,
-
-            g.grade_number,
-
-            ct.name,
-
-            ct.slug,
-
-            ct.icon,
-
-            ct.description,
-
-            ct.sort_order,
-
-            ct.is_active
-
-          FROM content_types ct
-
-          INNER JOIN sections s
-            ON s.id = ct.section_id
-
-          LEFT JOIN grades g
-            ON g.id = ct.grade_id
-
-          WHERE ct.section_id =
-            ${sectionId}
-
-            AND ct.is_active = TRUE
-
-            AND (
-              ${gradeId}::bigint IS NULL
-              OR ct.grade_id = ${gradeId}
-            )
-
-          ORDER BY
-
-            ct.sort_order ASC,
-
-            ct.id ASC
-        `;
-
 
         return send(res, 200, {
 
           success: true,
 
-          count: rows.length,
+          count:
+            rows.length,
 
-          grade_id: gradeId,
+          grade_id:
+            gradeId,
 
           content_types:
-            rows.map(mapContentType)
-
+            rows.map(
+              mapContentType
+            )
         });
       }
 
+      // ===============================================
+      // الأقسام
+      // ===============================================
 
-      // -----------------------------------------------
-      // إذا لم يتم تحديد نوع
-      // -----------------------------------------------
+      const sections =
+        await sql`
 
-      const sections = await sql`
+          SELECT
 
-        SELECT
-          id,
-          name,
-          slug,
-          icon,
-          color,
-          sort_order,
-          is_active
+            id,
 
-        FROM sections
+            name,
 
-        WHERE is_active = TRUE
+            slug,
 
-        ORDER BY
-          sort_order ASC,
-          id ASC
-      `;
+            icon,
 
+            color,
+
+            sort_order,
+
+            is_active
+
+          FROM sections
+
+          WHERE is_active = TRUE
+
+          ORDER BY
+
+            sort_order ASC,
+
+            id ASC
+        `;
 
       return send(res, 200, {
 
         success: true,
 
         sections
-
       });
     }
-
 
     // =================================================
     // العمليات الإدارية
@@ -514,10 +836,8 @@ export default async function handler(req, res) {
 
         error:
           'Method Not Allowed'
-
       });
     }
-
 
     // =================================================
     // التحقق من المدير
@@ -533,16 +853,12 @@ export default async function handler(req, res) {
 
         error:
           'غير مصرح. يجب تسجيل الدخول إلى الإدارة أولًا.'
-
       });
     }
-
 
     const body =
       req.body || {};
 
-
-    // نوع العملية
     const entity =
       cleanText(
         body.entity ||
@@ -550,13 +866,11 @@ export default async function handler(req, res) {
         50
       );
 
-
     // =================================================
     // POST
     // =================================================
 
     if (req.method === 'POST') {
-
 
       // ===============================================
       // إضافة صف إلى قسم
@@ -573,13 +887,11 @@ export default async function handler(req, res) {
             body.section
           );
 
-
         const gradeId =
           await resolveGradeId(
             body.grade_id ??
             body.grade
           );
-
 
         if (!sectionId) {
 
@@ -589,10 +901,8 @@ export default async function handler(req, res) {
 
             error:
               'القسم المحدد غير موجود.'
-
           });
         }
-
 
         if (!gradeId) {
 
@@ -602,10 +912,8 @@ export default async function handler(req, res) {
 
             error:
               'الصف المحدد غير موجود.'
-
           });
         }
-
 
         const duplicate =
           await sql`
@@ -623,7 +931,6 @@ export default async function handler(req, res) {
             LIMIT 1
           `;
 
-
         if (duplicate.length) {
 
           return send(res, 409, {
@@ -632,16 +939,19 @@ export default async function handler(req, res) {
 
             error:
               'هذا الصف موجود بالفعل داخل القسم.'
-
           });
         }
 
-
         let sortOrder =
-          Number(body.sort_order);
+          Number(
+            body.sort_order
+          );
 
-
-        if (!Number.isFinite(sortOrder)) {
+        if (
+          !Number.isFinite(
+            sortOrder
+          )
+        ) {
 
           const orderRows =
             await sql`
@@ -651,7 +961,8 @@ export default async function handler(req, res) {
                 COALESCE(
                   MAX(sort_order),
                   -1
-                ) + 1 AS next_order
+                ) + 1
+                  AS next_order
 
               FROM section_grades
 
@@ -659,13 +970,12 @@ export default async function handler(req, res) {
                 ${sectionId}
             `;
 
-
           sortOrder =
             Number(
-              orderRows[0]?.next_order || 0
+              orderRows[0]?.next_order ||
+              0
             );
         }
-
 
         const rows =
           await sql`
@@ -694,10 +1004,8 @@ export default async function handler(req, res) {
 
             )
 
-            RETURNING *
-
+            RETURNING id
           `;
-
 
         const result =
           await sql`
@@ -738,7 +1046,6 @@ export default async function handler(req, res) {
             LIMIT 1
           `;
 
-
         return send(res, 201, {
 
           success: true,
@@ -747,10 +1054,8 @@ export default async function handler(req, res) {
             mapSectionGrade(
               result[0]
             )
-
         });
       }
-
 
       // ===============================================
       // إضافة نوع محتوى
@@ -767,13 +1072,6 @@ export default async function handler(req, res) {
             body.section
           );
 
-        const gradeId =
-          await resolveGradeId(
-            body.grade_id ??
-            body.grade
-          );
-
-
         if (!sectionId) {
 
           return send(res, 400, {
@@ -782,10 +1080,8 @@ export default async function handler(req, res) {
 
             error:
               'القسم المحدد غير موجود.'
-
           });
         }
-
 
         const name =
           cleanText(
@@ -793,7 +1089,6 @@ export default async function handler(req, res) {
             body.title,
             200
           );
-
 
         if (!name) {
 
@@ -803,10 +1098,87 @@ export default async function handler(req, res) {
 
             error:
               'اسم نوع المحتوى مطلوب.'
-
           });
         }
 
+        // ---------------------------------------------
+        // الصف الحقيقي
+        // ---------------------------------------------
+
+        const gradeId =
+          await resolveContentTypeGrade(
+            body,
+            sectionId
+          );
+
+        // ---------------------------------------------
+        // التأكد أن القسم يستخدم الصفوف
+        // ---------------------------------------------
+
+        const sectionHasGrades =
+          await sql`
+
+            SELECT id
+
+            FROM section_grades
+
+            WHERE section_id =
+              ${sectionId}
+
+              AND is_active = TRUE
+
+            LIMIT 1
+          `;
+
+        if (
+          sectionHasGrades.length &&
+          !gradeId
+        ) {
+
+          return send(res, 400, {
+
+            success: false,
+
+            error:
+              'يجب تحديد الصف قبل إضافة نوع المحتوى.'
+          });
+        }
+
+        // ---------------------------------------------
+        // التأكد من ارتباط الصف بالقسم
+        // ---------------------------------------------
+
+        if (gradeId) {
+
+          const relation =
+            await sql`
+
+              SELECT id
+
+              FROM section_grades
+
+              WHERE section_id =
+                ${sectionId}
+
+                AND grade_id =
+                ${gradeId}
+
+                AND is_active = TRUE
+
+              LIMIT 1
+            `;
+
+          if (!relation.length) {
+
+            return send(res, 400, {
+
+              success: false,
+
+              error:
+                'الصف المحدد غير مرتبط بهذا القسم.'
+            });
+          }
+        }
 
         const slug =
           makeSlug(
@@ -815,28 +1187,47 @@ export default async function handler(req, res) {
             'content-type'
           );
 
+        // ---------------------------------------------
+        // منع التكرار داخل نفس الصف
+        // ---------------------------------------------
 
         const duplicate =
-          await sql`
+          gradeId
 
-            SELECT id
+            ? await sql`
 
-            FROM content_types
+                SELECT id
 
-            WHERE section_id =
-              ${sectionId}
+                FROM content_types
 
-              AND (
-                (${gradeId}::bigint IS NULL AND grade_id IS NULL)
-                OR grade_id = ${gradeId}
-              )
+                WHERE section_id =
+                  ${sectionId}
 
-              AND slug =
-                ${slug}
+                  AND grade_id =
+                  ${gradeId}
 
-            LIMIT 1
-          `;
+                  AND slug =
+                  ${slug}
 
+                LIMIT 1
+              `
+
+            : await sql`
+
+                SELECT id
+
+                FROM content_types
+
+                WHERE section_id =
+                  ${sectionId}
+
+                  AND grade_id IS NULL
+
+                  AND slug =
+                  ${slug}
+
+                LIMIT 1
+              `;
 
         if (duplicate.length) {
 
@@ -845,48 +1236,67 @@ export default async function handler(req, res) {
             success: false,
 
             error:
-              gradeId
-                ? 'نوع المحتوى موجود بالفعل لهذا الصف داخل هذا القسم.'
-                : 'نوع المحتوى موجود بالفعل في هذا القسم.'
-
+              'نوع المحتوى موجود بالفعل لهذا الصف.'
           });
         }
 
-
         let sortOrder =
-          Number(body.sort_order);
+          Number(
+            body.sort_order
+          );
 
-
-        if (!Number.isFinite(sortOrder)) {
+        if (
+          !Number.isFinite(
+            sortOrder
+          )
+        ) {
 
           const orderRows =
-            await sql`
+            gradeId
 
-              SELECT
+              ? await sql`
 
-                COALESCE(
-                  MAX(sort_order),
-                  -1
-                ) + 1 AS next_order
+                  SELECT
 
-              FROM content_types
+                    COALESCE(
+                      MAX(sort_order),
+                      -1
+                    ) + 1
+                      AS next_order
 
-              WHERE section_id =
-                ${sectionId}
+                  FROM content_types
 
-                AND (
-                  (${gradeId}::bigint IS NULL AND grade_id IS NULL)
-                  OR grade_id = ${gradeId}
-                )
-            `;
+                  WHERE section_id =
+                    ${sectionId}
 
+                    AND grade_id =
+                    ${gradeId}
+                `
+
+              : await sql`
+
+                  SELECT
+
+                    COALESCE(
+                      MAX(sort_order),
+                      -1
+                    ) + 1
+                      AS next_order
+
+                  FROM content_types
+
+                  WHERE section_id =
+                    ${sectionId}
+
+                    AND grade_id IS NULL
+                `;
 
           sortOrder =
             Number(
-              orderRows[0]?.next_order || 0
+              orderRows[0]?.next_order ||
+              0
             );
         }
-
 
         const rows =
           await sql`
@@ -938,58 +1348,12 @@ export default async function handler(req, res) {
             )
 
             RETURNING id
-
           `;
-
 
         const result =
-          await sql`
-
-            SELECT
-
-              ct.id,
-
-              ct.section_id,
-
-              s.name AS section_name,
-
-              s.slug AS section_slug,
-
-              ct.grade_id,
-
-              g.name AS grade_name,
-
-              g.slug AS grade_slug,
-
-              g.grade_number,
-
-              ct.name,
-
-              ct.slug,
-
-              ct.icon,
-
-              ct.description,
-
-              ct.sort_order,
-
-              ct.is_active
-
-            FROM content_types ct
-
-            INNER JOIN sections s
-              ON s.id = ct.section_id
-
-            LEFT JOIN grades g
-              ON g.id = ct.grade_id
-
-            WHERE ct.id =
-              ${rows[0].id}
-
-            LIMIT 1
-
-          `;
-
+          await getContentTypeById(
+            rows[0].id
+          );
 
         return send(res, 201, {
 
@@ -997,12 +1361,10 @@ export default async function handler(req, res) {
 
           content_type:
             mapContentType(
-              result[0]
+              result
             )
-
         });
       }
-
 
       return send(res, 400, {
 
@@ -1010,10 +1372,8 @@ export default async function handler(req, res) {
 
         error:
           'نوع العملية غير معروف.'
-
       });
     }
-
 
     // =================================================
     // PUT / PATCH
@@ -1030,7 +1390,6 @@ export default async function handler(req, res) {
           body.__backendId
         );
 
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -1042,13 +1401,11 @@ export default async function handler(req, res) {
 
           error:
             'المعرّف غير صالح.'
-
         });
       }
 
-
       // ===============================================
-      // تعديل صف داخل قسم
+      // تعديل صف
       // ===============================================
 
       if (
@@ -1063,12 +1420,11 @@ export default async function handler(req, res) {
 
             FROM section_grades
 
-            WHERE id = ${id}
+            WHERE id =
+              ${id}
 
             LIMIT 1
-
           `;
-
 
         if (!existing.length) {
 
@@ -1078,10 +1434,8 @@ export default async function handler(req, res) {
 
             error:
               'العلاقة بين الصف والقسم غير موجودة.'
-
           });
         }
-
 
         const sectionId =
           await resolveSectionId(
@@ -1089,15 +1443,16 @@ export default async function handler(req, res) {
             body.section
           );
 
-
         const gradeId =
           await resolveGradeId(
             body.grade_id ??
             body.grade
           );
 
-
-        if (!sectionId || !gradeId) {
+        if (
+          !sectionId ||
+          !gradeId
+        ) {
 
           return send(res, 400, {
 
@@ -1105,10 +1460,8 @@ export default async function handler(req, res) {
 
             error:
               'القسم والصف مطلوبان.'
-
           });
         }
-
 
         const duplicate =
           await sql`
@@ -1126,9 +1479,7 @@ export default async function handler(req, res) {
               AND id <> ${id}
 
             LIMIT 1
-
           `;
-
 
         if (duplicate.length) {
 
@@ -1138,18 +1489,21 @@ export default async function handler(req, res) {
 
             error:
               'هذا الصف موجود بالفعل داخل القسم.'
-
           });
         }
 
-
         const sortOrder =
           Number.isFinite(
-            Number(body.sort_order)
+            Number(
+              body.sort_order
+            )
           )
-            ? Number(body.sort_order)
-            : 0;
 
+            ? Number(
+                body.sort_order
+              )
+
+            : 0;
 
         const rows =
           await sql`
@@ -1170,12 +1524,11 @@ export default async function handler(req, res) {
               is_active =
                 ${body.is_active !== false}
 
-            WHERE id = ${id}
+            WHERE id =
+              ${id}
 
             RETURNING id
-
           `;
-
 
         const result =
           await sql`
@@ -1214,9 +1567,7 @@ export default async function handler(req, res) {
               ${rows[0].id}
 
             LIMIT 1
-
           `;
-
 
         return send(res, 200, {
 
@@ -1226,10 +1577,8 @@ export default async function handler(req, res) {
             mapSectionGrade(
               result[0]
             )
-
         });
       }
-
 
       // ===============================================
       // تعديل نوع المحتوى
@@ -1243,16 +1592,23 @@ export default async function handler(req, res) {
         const existing =
           await sql`
 
-            SELECT id
+            SELECT
+
+              id,
+
+              section_id,
+
+              grade_id,
+
+              sort_order
 
             FROM content_types
 
-            WHERE id = ${id}
+            WHERE id =
+              ${id}
 
             LIMIT 1
-
           `;
-
 
         if (!existing.length) {
 
@@ -1262,23 +1618,14 @@ export default async function handler(req, res) {
 
             error:
               'نوع المحتوى غير موجود.'
-
           });
         }
-
 
         const sectionId =
           await resolveSectionId(
             body.section_id ??
             body.section
           );
-
-        const gradeId =
-          await resolveGradeId(
-            body.grade_id ??
-            body.grade
-          );
-
 
         const name =
           cleanText(
@@ -1287,8 +1634,10 @@ export default async function handler(req, res) {
             200
           );
 
-
-        if (!sectionId || !name) {
+        if (
+          !sectionId ||
+          !name
+        ) {
 
           return send(res, 400, {
 
@@ -1296,10 +1645,53 @@ export default async function handler(req, res) {
 
             error:
               'القسم واسم النوع مطلوبان.'
-
           });
         }
 
+        /*
+         * إذا لم يرسل النموذج الصف،
+         * نحافظ على الصف الحالي.
+         */
+
+        const gradeId =
+          await resolveContentTypeGrade(
+            body,
+            sectionId,
+            existing[0].grade_id ??
+              null
+          );
+
+        if (gradeId) {
+
+          const relation =
+            await sql`
+
+              SELECT id
+
+              FROM section_grades
+
+              WHERE section_id =
+                ${sectionId}
+
+                AND grade_id =
+                ${gradeId}
+
+                AND is_active = TRUE
+
+              LIMIT 1
+            `;
+
+          if (!relation.length) {
+
+            return send(res, 400, {
+
+              success: false,
+
+              error:
+                'الصف المحدد غير مرتبط بهذا القسم.'
+            });
+          }
+        }
 
         const slug =
           makeSlug(
@@ -1308,31 +1700,47 @@ export default async function handler(req, res) {
             'content-type'
           );
 
-
         const duplicate =
-          await sql`
+          gradeId
 
-            SELECT id
+            ? await sql`
 
-            FROM content_types
+                SELECT id
 
-            WHERE section_id =
-              ${sectionId}
+                FROM content_types
 
-              AND (
-                (${gradeId}::bigint IS NULL AND grade_id IS NULL)
-                OR grade_id = ${gradeId}
-              )
+                WHERE section_id =
+                  ${sectionId}
 
-              AND slug =
-                ${slug}
+                  AND grade_id =
+                  ${gradeId}
 
-              AND id <> ${id}
+                  AND slug =
+                  ${slug}
 
-            LIMIT 1
+                  AND id <> ${id}
 
-          `;
+                LIMIT 1
+              `
 
+            : await sql`
+
+                SELECT id
+
+                FROM content_types
+
+                WHERE section_id =
+                  ${sectionId}
+
+                  AND grade_id IS NULL
+
+                  AND slug =
+                  ${slug}
+
+                  AND id <> ${id}
+
+                LIMIT 1
+              `;
 
         if (duplicate.length) {
 
@@ -1341,19 +1749,25 @@ export default async function handler(req, res) {
             success: false,
 
             error:
-              'نوع المحتوى مستخدم بالفعل.'
-
+              'نوع المحتوى مستخدم بالفعل لهذا الصف.'
           });
         }
 
-
         const sortOrder =
           Number.isFinite(
-            Number(body.sort_order)
+            Number(
+              body.sort_order
+            )
           )
-            ? Number(body.sort_order)
-            : 0;
 
+            ? Number(
+                body.sort_order
+              )
+
+            : Number(
+                existing[0].sort_order ||
+                0
+              );
 
         const rows =
           await sql`
@@ -1395,61 +1809,16 @@ export default async function handler(req, res) {
               updated_at =
                 NOW()
 
-            WHERE id = ${id}
+            WHERE id =
+              ${id}
 
             RETURNING id
-
           `;
-
 
         const result =
-          await sql`
-
-            SELECT
-
-              ct.id,
-
-              ct.section_id,
-
-              s.name AS section_name,
-
-              s.slug AS section_slug,
-
-              ct.grade_id,
-
-              g.name AS grade_name,
-
-              g.slug AS grade_slug,
-
-              g.grade_number,
-
-              ct.name,
-
-              ct.slug,
-
-              ct.icon,
-
-              ct.description,
-
-              ct.sort_order,
-
-              ct.is_active
-
-            FROM content_types ct
-
-            INNER JOIN sections s
-              ON s.id = ct.section_id
-
-            LEFT JOIN grades g
-              ON g.id = ct.grade_id
-
-            WHERE ct.id =
-              ${rows[0].id}
-
-            LIMIT 1
-
-          `;
-
+          await getContentTypeById(
+            rows[0].id
+          );
 
         return send(res, 200, {
 
@@ -1457,12 +1826,10 @@ export default async function handler(req, res) {
 
           content_type:
             mapContentType(
-              result[0]
+              result
             )
-
         });
       }
-
 
       return send(res, 400, {
 
@@ -1470,10 +1837,8 @@ export default async function handler(req, res) {
 
         error:
           'نوع العملية غير معروف.'
-
       });
     }
-
 
     // =================================================
     // DELETE
@@ -1488,7 +1853,6 @@ export default async function handler(req, res) {
           req.query?.id
         );
 
-
       if (
         !Number.isInteger(id) ||
         id <= 0
@@ -1500,10 +1864,8 @@ export default async function handler(req, res) {
 
           error:
             'المعرّف غير صالح.'
-
         });
       }
-
 
       // ===============================================
       // حذف صف من قسم
@@ -1519,10 +1881,9 @@ export default async function handler(req, res) {
 
             DELETE FROM section_grades
 
-            WHERE id = ${id}
-
+            WHERE id =
+              ${id}
           `;
-
 
         if (!result.count) {
 
@@ -1532,10 +1893,8 @@ export default async function handler(req, res) {
 
             error:
               'الصف غير موجود داخل هذا القسم.'
-
           });
         }
-
 
         return send(res, 200, {
 
@@ -1543,10 +1902,8 @@ export default async function handler(req, res) {
 
           message:
             'تم إزالة الصف من القسم بنجاح.'
-
         });
       }
-
 
       // ===============================================
       // حذف نوع محتوى
@@ -1564,12 +1921,11 @@ export default async function handler(req, res) {
 
             FROM content_types
 
-            WHERE id = ${id}
+            WHERE id =
+              ${id}
 
             LIMIT 1
-
           `;
-
 
         if (!existing.length) {
 
@@ -1579,19 +1935,16 @@ export default async function handler(req, res) {
 
             error:
               'نوع المحتوى غير موجود.'
-
           });
         }
-
 
         await sql`
 
           DELETE FROM content_types
 
-          WHERE id = ${id}
-
+          WHERE id =
+            ${id}
         `;
-
 
         return send(res, 200, {
 
@@ -1599,10 +1952,8 @@ export default async function handler(req, res) {
 
           message:
             'تم حذف نوع المحتوى بنجاح.'
-
         });
       }
-
 
       return send(res, 400, {
 
@@ -1610,7 +1961,6 @@ export default async function handler(req, res) {
 
         error:
           'نوع العملية غير معروف.'
-
       });
     }
 
@@ -1620,7 +1970,6 @@ export default async function handler(req, res) {
       'Structure API error:',
       error
     );
-
 
     return send(res, 500, {
 
@@ -1636,7 +1985,6 @@ export default async function handler(req, res) {
               error
             )
           : undefined
-
     });
   }
 }
