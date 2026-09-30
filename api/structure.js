@@ -343,78 +343,185 @@ async function getSectionTypes(
   gradeWasRequested = false
 ) {
 
-  if (
-    gradeWasRequested &&
-    !gradeId
-  ) {
-    return [];
-  }
-
-  // -----------------------------------------------
-  // أنواع مرتبطة بصف محدد
-  // -----------------------------------------------
-
   if (gradeWasRequested) {
+
+    if (!gradeId) {
+      return [];
+    }
+
+    /*
+     * عند اختيار صف:
+     *
+     * 1. نعرض الأنواع العامة القديمة للقسم
+     *    grade_id IS NULL
+     *
+     * 2. نعرض الأنواع الخاصة بالصف
+     *    grade_id = الصف الحالي
+     *
+     * 3. إذا كان الاسم نفسه موجودًا في الاثنين،
+     *    نعتمد النوع الخاص بالصف.
+     */
 
     return await sql`
 
+      WITH candidates AS (
+
+        SELECT
+
+          ct.id,
+
+          ct.section_id,
+
+          s.name AS section_name,
+
+          s.slug AS section_slug,
+
+          ct.grade_id,
+
+          g.name AS grade_name,
+
+          g.slug AS grade_slug,
+
+          g.grade_number,
+
+          ct.name,
+
+          ct.slug,
+
+          ct.icon,
+
+          ct.description,
+
+          ct.sort_order,
+
+          ct.is_active,
+
+          CASE
+
+            WHEN ct.grade_id = ${gradeId}
+              THEN 0
+
+            ELSE 1
+
+          END AS priority
+
+        FROM content_types ct
+
+        INNER JOIN sections s
+          ON s.id = ct.section_id
+
+        LEFT JOIN grades g
+          ON g.id = ct.grade_id
+
+        WHERE
+
+          ct.section_id = ${sectionId}
+
+          AND ct.is_active = TRUE
+
+          AND (
+
+            ct.grade_id = ${gradeId}
+
+            OR ct.grade_id IS NULL
+
+          )
+      ),
+
+      unique_types AS (
+
+        SELECT DISTINCT ON (
+          LOWER(TRIM(name))
+        )
+
+          id,
+
+          section_id,
+
+          section_name,
+
+          section_slug,
+
+          grade_id,
+
+          grade_name,
+
+          grade_slug,
+
+          grade_number,
+
+          name,
+
+          slug,
+
+          icon,
+
+          description,
+
+          sort_order,
+
+          is_active,
+
+          priority
+
+        FROM candidates
+
+        ORDER BY
+
+          LOWER(TRIM(name)),
+
+          priority ASC,
+
+          sort_order ASC,
+
+          id ASC
+      )
+
       SELECT
 
-        ct.id,
+        id,
 
-        ct.section_id,
+        section_id,
 
-        s.name AS section_name,
+        section_name,
 
-        s.slug AS section_slug,
+        section_slug,
 
-        ct.grade_id,
+        grade_id,
 
-        g.name AS grade_name,
+        grade_name,
 
-        g.slug AS grade_slug,
+        grade_slug,
 
-        g.grade_number,
+        grade_number,
 
-        ct.name,
+        name,
 
-        ct.slug,
+        slug,
 
-        ct.icon,
+        icon,
 
-        ct.description,
+        description,
 
-        ct.sort_order,
+        sort_order,
 
-        ct.is_active
+        is_active
 
-      FROM content_types ct
-
-      INNER JOIN sections s
-        ON s.id = ct.section_id
-
-      LEFT JOIN grades g
-        ON g.id = ct.grade_id
-
-      WHERE ct.section_id =
-        ${sectionId}
-
-        AND ct.grade_id =
-        ${gradeId}
-
-        AND ct.is_active = TRUE
+      FROM unique_types
 
       ORDER BY
 
-        ct.sort_order ASC,
+        sort_order ASC,
 
-        ct.id ASC
+        id ASC
+
     `;
   }
 
-  // -----------------------------------------------
-  // الأنواع العامة فقط
-  // -----------------------------------------------
+  /*
+   * عند عدم تحديد صف:
+   * نعرض الأنواع العامة فقط.
+   */
 
   return await sql`
 
@@ -456,8 +563,9 @@ async function getSectionTypes(
     LEFT JOIN grades g
       ON g.id = ct.grade_id
 
-    WHERE ct.section_id =
-      ${sectionId}
+    WHERE
+
+      ct.section_id = ${sectionId}
 
       AND ct.grade_id IS NULL
 
@@ -468,6 +576,7 @@ async function getSectionTypes(
       ct.sort_order ASC,
 
       ct.id ASC
+
   `;
 }
 
@@ -520,6 +629,7 @@ async function getContentTypeById(id) {
     WHERE ct.id = ${id}
 
     LIMIT 1
+
   `;
 
   return rows[0] || null;
@@ -619,6 +729,7 @@ export default async function handler(
             sg.sort_order ASC,
 
             sg.id ASC
+
         `;
 
         return send(res, 200, {
@@ -632,6 +743,7 @@ export default async function handler(
             rows.map(
               mapSectionGrade
             )
+
         });
       }
 
@@ -647,15 +759,19 @@ export default async function handler(
         if (!sectionId) {
 
           return send(res, 400, {
+
             success: false,
+
             error:
               'يجب تحديد القسم.'
+
           });
         }
 
         const hasGrade =
 
           (
+
             req.query?.grade_id !==
               undefined &&
 
@@ -664,11 +780,13 @@ export default async function handler(
 
             req.query?.grade_id !==
               ''
+
           )
 
           ||
 
           (
+
             req.query?.grade !==
               undefined &&
 
@@ -677,11 +795,13 @@ export default async function handler(
 
             req.query?.grade !==
               ''
+
           )
 
           ||
 
           (
+
             req.query?.section_grade_id !==
               undefined &&
 
@@ -690,6 +810,7 @@ export default async function handler(
 
             req.query?.section_grade_id !==
               ''
+
           );
 
         let gradeId = null;
@@ -706,6 +827,7 @@ export default async function handler(
             await resolveGradeId(
               req.query.grade_id
             );
+
         }
 
         // ---------------------------------------------
@@ -720,6 +842,7 @@ export default async function handler(
             await resolveGradeId(
               req.query.grade
             );
+
         }
 
         // ---------------------------------------------
@@ -735,6 +858,7 @@ export default async function handler(
               req.query.section_grade_id,
               sectionId
             );
+
         }
 
         if (
@@ -748,6 +872,7 @@ export default async function handler(
 
             error:
               'الصف المحدد غير موجود.'
+
           });
         }
 
@@ -772,6 +897,7 @@ export default async function handler(
             rows.map(
               mapContentType
             )
+
         });
       }
 
@@ -807,6 +933,7 @@ export default async function handler(
             sort_order ASC,
 
             id ASC
+
         `;
 
       return send(res, 200, {
@@ -814,6 +941,7 @@ export default async function handler(
         success: true,
 
         sections
+
       });
     }
 
@@ -836,6 +964,7 @@ export default async function handler(
 
         error:
           'Method Not Allowed'
+
       });
     }
 
@@ -853,6 +982,7 @@ export default async function handler(
 
         error:
           'غير مصرح. يجب تسجيل الدخول إلى الإدارة أولًا.'
+
       });
     }
 
@@ -901,6 +1031,7 @@ export default async function handler(
 
             error:
               'القسم المحدد غير موجود.'
+
           });
         }
 
@@ -912,6 +1043,7 @@ export default async function handler(
 
             error:
               'الصف المحدد غير موجود.'
+
           });
         }
 
@@ -929,6 +1061,7 @@ export default async function handler(
               ${gradeId}
 
             LIMIT 1
+
           `;
 
         if (duplicate.length) {
@@ -939,6 +1072,7 @@ export default async function handler(
 
             error:
               'هذا الصف موجود بالفعل داخل القسم.'
+
           });
         }
 
@@ -968,6 +1102,7 @@ export default async function handler(
 
               WHERE section_id =
                 ${sectionId}
+
             `;
 
           sortOrder =
@@ -1005,6 +1140,7 @@ export default async function handler(
             )
 
             RETURNING id
+
           `;
 
         const result =
@@ -1044,6 +1180,7 @@ export default async function handler(
               ${rows[0].id}
 
             LIMIT 1
+
           `;
 
         return send(res, 201, {
@@ -1054,6 +1191,7 @@ export default async function handler(
             mapSectionGrade(
               result[0]
             )
+
         });
       }
 
@@ -1080,6 +1218,7 @@ export default async function handler(
 
             error:
               'القسم المحدد غير موجود.'
+
           });
         }
 
@@ -1098,6 +1237,7 @@ export default async function handler(
 
             error:
               'اسم نوع المحتوى مطلوب.'
+
           });
         }
 
@@ -1128,6 +1268,7 @@ export default async function handler(
               AND is_active = TRUE
 
             LIMIT 1
+
           `;
 
         if (
@@ -1141,6 +1282,7 @@ export default async function handler(
 
             error:
               'يجب تحديد الصف قبل إضافة نوع المحتوى.'
+
           });
         }
 
@@ -1166,6 +1308,7 @@ export default async function handler(
                 AND is_active = TRUE
 
               LIMIT 1
+
             `;
 
           if (!relation.length) {
@@ -1176,6 +1319,7 @@ export default async function handler(
 
               error:
                 'الصف المحدد غير مرتبط بهذا القسم.'
+
             });
           }
         }
@@ -1210,6 +1354,7 @@ export default async function handler(
                   ${slug}
 
                 LIMIT 1
+
               `
 
             : await sql`
@@ -1227,6 +1372,7 @@ export default async function handler(
                   ${slug}
 
                 LIMIT 1
+
               `;
 
         if (duplicate.length) {
@@ -1237,6 +1383,7 @@ export default async function handler(
 
             error:
               'نوع المحتوى موجود بالفعل لهذا الصف.'
+
           });
         }
 
@@ -1271,6 +1418,7 @@ export default async function handler(
 
                     AND grade_id =
                     ${gradeId}
+
                 `
 
               : await sql`
@@ -1289,6 +1437,7 @@ export default async function handler(
                     ${sectionId}
 
                     AND grade_id IS NULL
+
                 `;
 
           sortOrder =
@@ -1348,6 +1497,7 @@ export default async function handler(
             )
 
             RETURNING id
+
           `;
 
         const result =
@@ -1363,6 +1513,7 @@ export default async function handler(
             mapContentType(
               result
             )
+
         });
       }
 
@@ -1372,6 +1523,7 @@ export default async function handler(
 
         error:
           'نوع العملية غير معروف.'
+
       });
     }
 
@@ -1401,6 +1553,7 @@ export default async function handler(
 
           error:
             'المعرّف غير صالح.'
+
         });
       }
 
@@ -1424,6 +1577,7 @@ export default async function handler(
               ${id}
 
             LIMIT 1
+
           `;
 
         if (!existing.length) {
@@ -1434,6 +1588,7 @@ export default async function handler(
 
             error:
               'العلاقة بين الصف والقسم غير موجودة.'
+
           });
         }
 
@@ -1460,6 +1615,7 @@ export default async function handler(
 
             error:
               'القسم والصف مطلوبان.'
+
           });
         }
 
@@ -1479,6 +1635,7 @@ export default async function handler(
               AND id <> ${id}
 
             LIMIT 1
+
           `;
 
         if (duplicate.length) {
@@ -1489,6 +1646,7 @@ export default async function handler(
 
             error:
               'هذا الصف موجود بالفعل داخل القسم.'
+
           });
         }
 
@@ -1528,6 +1686,7 @@ export default async function handler(
               ${id}
 
             RETURNING id
+
           `;
 
         const result =
@@ -1567,6 +1726,7 @@ export default async function handler(
               ${rows[0].id}
 
             LIMIT 1
+
           `;
 
         return send(res, 200, {
@@ -1577,6 +1737,7 @@ export default async function handler(
             mapSectionGrade(
               result[0]
             )
+
         });
       }
 
@@ -1608,6 +1769,7 @@ export default async function handler(
               ${id}
 
             LIMIT 1
+
           `;
 
         if (!existing.length) {
@@ -1618,6 +1780,7 @@ export default async function handler(
 
             error:
               'نوع المحتوى غير موجود.'
+
           });
         }
 
@@ -1645,6 +1808,7 @@ export default async function handler(
 
             error:
               'القسم واسم النوع مطلوبان.'
+
           });
         }
 
@@ -1679,6 +1843,7 @@ export default async function handler(
                 AND is_active = TRUE
 
               LIMIT 1
+
             `;
 
           if (!relation.length) {
@@ -1689,6 +1854,7 @@ export default async function handler(
 
               error:
                 'الصف المحدد غير مرتبط بهذا القسم.'
+
             });
           }
         }
@@ -1721,6 +1887,7 @@ export default async function handler(
                   AND id <> ${id}
 
                 LIMIT 1
+
               `
 
             : await sql`
@@ -1740,6 +1907,7 @@ export default async function handler(
                   AND id <> ${id}
 
                 LIMIT 1
+
               `;
 
         if (duplicate.length) {
@@ -1750,6 +1918,7 @@ export default async function handler(
 
             error:
               'نوع المحتوى مستخدم بالفعل لهذا الصف.'
+
           });
         }
 
@@ -1813,6 +1982,7 @@ export default async function handler(
               ${id}
 
             RETURNING id
+
           `;
 
         const result =
@@ -1828,6 +1998,7 @@ export default async function handler(
             mapContentType(
               result
             )
+
         });
       }
 
@@ -1837,6 +2008,7 @@ export default async function handler(
 
         error:
           'نوع العملية غير معروف.'
+
       });
     }
 
@@ -1864,6 +2036,7 @@ export default async function handler(
 
           error:
             'المعرّف غير صالح.'
+
         });
       }
 
@@ -1883,6 +2056,7 @@ export default async function handler(
 
             WHERE id =
               ${id}
+
           `;
 
         if (!result.count) {
@@ -1893,6 +2067,7 @@ export default async function handler(
 
             error:
               'الصف غير موجود داخل هذا القسم.'
+
           });
         }
 
@@ -1902,6 +2077,7 @@ export default async function handler(
 
           message:
             'تم إزالة الصف من القسم بنجاح.'
+
         });
       }
 
@@ -1925,6 +2101,7 @@ export default async function handler(
               ${id}
 
             LIMIT 1
+
           `;
 
         if (!existing.length) {
@@ -1935,6 +2112,7 @@ export default async function handler(
 
             error:
               'نوع المحتوى غير موجود.'
+
           });
         }
 
@@ -1944,6 +2122,7 @@ export default async function handler(
 
           WHERE id =
             ${id}
+
         `;
 
         return send(res, 200, {
@@ -1952,6 +2131,7 @@ export default async function handler(
 
           message:
             'تم حذف نوع المحتوى بنجاح.'
+
         });
       }
 
@@ -1961,6 +2141,7 @@ export default async function handler(
 
         error:
           'نوع العملية غير معروف.'
+
       });
     }
 
@@ -1985,6 +2166,7 @@ export default async function handler(
               error
             )
           : undefined
+
     });
   }
 }
