@@ -216,6 +216,18 @@ function mapContentType(row) {
 
     section_slug: row.section_slug || '',
 
+    grade_id: row.grade_id ?? null,
+
+    grade_name: row.grade_name || '',
+
+    grade_slug: row.grade_slug || '',
+
+    grade_number:
+      row.grade_number !== null &&
+      row.grade_number !== undefined
+        ? Number(row.grade_number)
+        : null,
+
     name: row.name || '',
 
     title: row.name || '',
@@ -368,6 +380,12 @@ export default async function handler(req, res) {
           });
         }
 
+        const gradeId =
+          await resolveGradeId(
+            req.query?.grade_id ??
+            req.query?.grade
+          );
+
 
         const rows = await sql`
 
@@ -380,6 +398,14 @@ export default async function handler(req, res) {
             s.name AS section_name,
 
             s.slug AS section_slug,
+
+            ct.grade_id,
+
+            g.name AS grade_name,
+
+            g.slug AS grade_slug,
+
+            g.grade_number,
 
             ct.name,
 
@@ -398,10 +424,18 @@ export default async function handler(req, res) {
           INNER JOIN sections s
             ON s.id = ct.section_id
 
+          LEFT JOIN grades g
+            ON g.id = ct.grade_id
+
           WHERE ct.section_id =
             ${sectionId}
 
             AND ct.is_active = TRUE
+
+            AND (
+              ${gradeId}::bigint IS NULL
+              OR ct.grade_id = ${gradeId}
+            )
 
           ORDER BY
 
@@ -416,6 +450,8 @@ export default async function handler(req, res) {
           success: true,
 
           count: rows.length,
+
+          grade_id: gradeId,
 
           content_types:
             rows.map(mapContentType)
@@ -731,6 +767,12 @@ export default async function handler(req, res) {
             body.section
           );
 
+        const gradeId =
+          await resolveGradeId(
+            body.grade_id ??
+            body.grade
+          );
+
 
         if (!sectionId) {
 
@@ -784,8 +826,13 @@ export default async function handler(req, res) {
             WHERE section_id =
               ${sectionId}
 
+              AND (
+                (${gradeId}::bigint IS NULL AND grade_id IS NULL)
+                OR grade_id = ${gradeId}
+              )
+
               AND slug =
-              ${slug}
+                ${slug}
 
             LIMIT 1
           `;
@@ -798,7 +845,9 @@ export default async function handler(req, res) {
             success: false,
 
             error:
-              'نوع المحتوى موجود بالفعل في هذا القسم.'
+              gradeId
+                ? 'نوع المحتوى موجود بالفعل لهذا الصف داخل هذا القسم.'
+                : 'نوع المحتوى موجود بالفعل في هذا القسم.'
 
           });
         }
@@ -824,6 +873,11 @@ export default async function handler(req, res) {
 
               WHERE section_id =
                 ${sectionId}
+
+                AND (
+                  (${gradeId}::bigint IS NULL AND grade_id IS NULL)
+                  OR grade_id = ${gradeId}
+                )
             `;
 
 
@@ -840,6 +894,8 @@ export default async function handler(req, res) {
             INSERT INTO content_types (
 
               section_id,
+
+              grade_id,
 
               name,
 
@@ -858,6 +914,8 @@ export default async function handler(req, res) {
             VALUES (
 
               ${sectionId},
+
+              ${gradeId},
 
               ${name},
 
@@ -897,6 +955,14 @@ export default async function handler(req, res) {
 
               s.slug AS section_slug,
 
+              ct.grade_id,
+
+              g.name AS grade_name,
+
+              g.slug AS grade_slug,
+
+              g.grade_number,
+
               ct.name,
 
               ct.slug,
@@ -913,6 +979,9 @@ export default async function handler(req, res) {
 
             INNER JOIN sections s
               ON s.id = ct.section_id
+
+            LEFT JOIN grades g
+              ON g.id = ct.grade_id
 
             WHERE ct.id =
               ${rows[0].id}
@@ -1204,6 +1273,12 @@ export default async function handler(req, res) {
             body.section
           );
 
+        const gradeId =
+          await resolveGradeId(
+            body.grade_id ??
+            body.grade
+          );
+
 
         const name =
           cleanText(
@@ -1244,8 +1319,13 @@ export default async function handler(req, res) {
             WHERE section_id =
               ${sectionId}
 
+              AND (
+                (${gradeId}::bigint IS NULL AND grade_id IS NULL)
+                OR grade_id = ${gradeId}
+              )
+
               AND slug =
-              ${slug}
+                ${slug}
 
               AND id <> ${id}
 
@@ -1284,6 +1364,9 @@ export default async function handler(req, res) {
 
               section_id =
                 ${sectionId},
+
+              grade_id =
+                ${gradeId},
 
               name =
                 ${name},
@@ -1332,6 +1415,14 @@ export default async function handler(req, res) {
 
               s.slug AS section_slug,
 
+              ct.grade_id,
+
+              g.name AS grade_name,
+
+              g.slug AS grade_slug,
+
+              g.grade_number,
+
               ct.name,
 
               ct.slug,
@@ -1348,6 +1439,9 @@ export default async function handler(req, res) {
 
             INNER JOIN sections s
               ON s.id = ct.section_id
+
+            LEFT JOIN grades g
+              ON g.id = ct.grade_id
 
             WHERE ct.id =
               ${rows[0].id}
