@@ -1,4 +1,4 @@
-!doctype html>
+octype html>
 <html lang="ar" dir="rtl">
  <head><script>window["__codeletBootstrap__"]=JSON.parse('{"A":"A","B":"20260825-05-ee72b97","C":{"Abril Fatface":"YACgEZbkUVE,0","Alfa Slab One":"YACgEYS9sJU,0","Anton":"YACgEcYqQ-A,0","Archivo":"YAHO2-t-jNE,0","Arial":"YAGyDvJ_4Ts,0","Bebas Neue":"YACgESME5ew,0","Bricolage Grotesque":"YAFyMcdwzpc,0","Canva Sans":"YAFLd8sKbwc,2","Caveat":"YALBs2ploWQ,0","Comic Sans MS":"YAHO2VMiyZo,0","Cormorant Garamond":"YAFdJhX-538,0","Courier New":"YAGzXiGs0_8,0","DM Sans":"YAD1aU3sLnI,0","DM Serif Display":"YAD1aYG82rc,0","Forum":"YACgEcnnqB4,0","Fraunces":"YAEul-FRQw4,0","Georgia":"YAGzXkO0pEM,0","Helvetica Neue":"YAFcf6CtJfI,0","Impact":"YAFcfnjI7Vk,0","Inter":"YAFdJvSyp_k,3","Iowan Old Style":"YAGNIFa8j9o,0","Jacques Francois":"YAHO2a5g66Q,0","JetBrains Mono":"YAFdJksXcAk,0","Libre Baskerville":"YACgEUFdPdA,0","Manrope":"YAHO2b2feC4,0","Merriweather":"YACgEXvHxxs,0","Montserrat":"YADLjI9qxTA,0","Nunito":"YACgEX8C5Gg,0","Oleo Script":"YACgEQQ14jI,0","Phantom Sans":"YAHO2E8Pb88,0","Playfair Display":"YACgEYmuCJE,0","Poppins":"YAFdJjbTu24,1","Press Start 2P":"YAFyGr-8pmQ,0","Quicksand":"YADWjpfPmdk,0","Raleway":"YACgEVg3xZg,0","Segoe UI":"YAHNdRD1Klw,0","Source Sans 3":"YAG4lO1Mj10,0","Spectral":"YAHO2rVUHIM,0","Times New Roman":"YAGzXW3gftg,0","Times":"YAGzXW3gftg,0","Ubuntu":"YACgERDU--Q,0","Work Sans":"YAGXhLOKv44,0","Yellowtail":"YACgEYG4kG4,0","ui-monospace":"YADlN8CFZ8Q,0","ui-sans-serif":"YACkoN-xg4g,0"}}');</script><script src="/_sdk/50d846425a1e5082.telemetry_sdk.js" integrity="sha512-Otbex+ztlVbcEGql0rXGd/3E3ee/hqAntg6DeuUEMG6pIPbXGOSvZbFZVzknAXi1tH/itQ+ijEhOTr2aWj6CXg=="></script>
   <meta charset="UTF-8">
@@ -689,15 +689,14 @@
         return;
       }
 
-      // الوسائل التعليمية: لا نعرض الصفوف للزائر.
-      // إذا وُجد محتوى، يظهر المحتوى مباشرة. وإذا لم يوجد محتوى،
-      // تظهر أنواع المحتوى مباشرة. حذف الصفوف من إدارة القسم لا يغيّر
-      // هذه الصفحة إلى صفحة صفوف؛ بل يجعلها تعتمد على المحتوى/الأنواع.
+      // الوسائل التعليمية لها مستويان ثابتان للزائر:
+      // 1) محاكاة تفاعلية للرياضيات
+      // 2) وسائل إلكترونية
+      // لا نعرض أي محتوى مباشرة في المستوى الأول، ولا نعرض الصفوف.
       if (sectionId === 'learning-tools') {
-        document.getElementById('generic-section-title').textContent = name;
-        if (document.getElementById('professional-page-title')) document.getElementById('professional-page-title').textContent = name;
+        document.getElementById('generic-section-title').textContent = 'الوسائل التعليمية';
         navigateTo('generic-section');
-        await renderGenericSection();
+        await renderLearningToolsDirect();
         return;
       }
 
@@ -1080,93 +1079,87 @@
       }
     }
 
+    // ============ LEARNING TOOLS ============
+    // هذا القسم له مستويان ثابتان فقط:
+    // المستوى الأول: محاكاة تفاعلية للرياضيات + وسائل إلكترونية.
+    // المستوى الثاني: المحتويات الموجودة داخل النوع المختار.
+    // لا نعتمد على أنواع قاعدة البيانات في المستوى الأول حتى لا تظهر
+    // المحتويات مباشرة أو تختفي الفئات بسبب نقص/اختلاف إعدادات الأنواع.
+
+    const LEARNING_TOOLS_MAIN_TYPES = [
+      {
+        name: 'محاكاة تفاعلية للرياضيات',
+        slug: 'interactive-simulations',
+        icon: 'calculator',
+        description: 'محاكاة وأدوات تفاعلية تساعد على فهم المفاهيم الرياضية.'
+      },
+      {
+        name: 'وسائل إلكترونية',
+        slug: 'electronic-tools',
+        icon: 'monitor',
+        description: 'روابط وأدوات إلكترونية مفيدة لتعلّم الرياضيات.'
+      }
+    ];
+
+    function normalizeLearningToolsCategory(contentType) {
+      const value = String(contentType || '').trim();
+
+      // أي نوع قديم أو جديد يحتوي على كلمة "محاكاة" يندرج تحت
+      // الفئة الأولى، وبذلك لا نفقد المحتوى القديم بعد إعادة التنظيم.
+      if (
+        value === 'محاكاة تفاعلية للرياضيات' ||
+        value === 'محاكاة تفاعلية' ||
+        value.includes('محاكاة')
+      ) {
+        return 'محاكاة تفاعلية للرياضيات';
+      }
+
+      // جميع الأنواع الأخرى في قسم الوسائل التعليمية تُعرض تحت
+      // "وسائل إلكترونية". وهذا يحافظ على المحتوى الموجود وروابطه.
+      return 'وسائل إلكترونية';
+    }
+
+    function getLearningToolsItems(categoryName = '') {
+      const target = String(categoryName || '').trim();
+
+      return contentRecords.filter(item => {
+        if (String(item.section || '').trim() !== 'learning-tools') return false;
+        if (item.is_active === false) return false;
+
+        if (!target) return true;
+
+        return normalizeLearningToolsCategory(item.content_type) === target;
+      });
+    }
+
     async function renderLearningToolsDirect() {
       const container = document.getElementById('generic-content-list');
       const empty = document.getElementById('generic-empty');
       const title = document.getElementById('generic-section-title');
+
       if (!container || !empty) return;
 
-      const sectionName = siteSections.find(s =>
-        String(s.grade || s.slug || s.id) === 'learning-tools'
-      )?.title || 'الوسائل التعليمية';
+      if (title) title.textContent = 'الوسائل التعليمية';
 
-      if (title) title.textContent = sectionName;
-
-      // ============================================================
-      // الوسائل التعليمية لها مستويان ثابتان فقط:
-      // 1) محاكاة تفاعلية للرياضيات
-      // 2) وسائل إلكترونية
-      // لا نعرض المواد نفسها في المستوى الأول.
-      // ============================================================
-      let types = [];
-
-      try {
-        const structure = await fetchSectionStructure('learning-tools');
-        const dbTypes = Array.isArray(structure.types) ? structure.types : [];
-
-        // نأخذ النوعين الرئيسيين فقط، وبالترتيب المطلوب.
-        const preferredNames = ['محاكاة تفاعلية للرياضيات', 'وسائل إلكترونية'];
-        types = preferredNames.map((name, index) => {
-          const found = dbTypes.find(type =>
-            String(type.name || type.title || '').trim() === name
-          );
-
-          return found || {
-            id: `learning-tools-main-${index + 1}`,
-            name,
-            slug: index === 0 ? 'interactive-simulations' : 'electronic-tools',
-            icon: index === 0 ? 'calculator' : 'monitor',
-            description: index === 0
-              ? 'محاكاة وأدوات تفاعلية تساعد على فهم المفاهيم الرياضية.'
-              : 'روابط وأدوات إلكترونية مفيدة لتعلّم الرياضيات.'
-          };
-        });
-      } catch (error) {
-        console.error('[رياضيات بلاد الشهوم] Learning tools types error:', error);
-        types = [
-          {
-            name: 'محاكاة تفاعلية للرياضيات',
-            slug: 'interactive-simulations',
-            icon: 'calculator',
-            description: 'محاكاة وأدوات تفاعلية تساعد على فهم المفاهيم الرياضية.'
-          },
-          {
-            name: 'وسائل إلكترونية',
-            slug: 'electronic-tools',
-            icon: 'monitor',
-            description: 'روابط وأدوات إلكترونية مفيدة لتعلّم الرياضيات.'
-          }
-        ];
-      }
-
+      // مهم جدًا: تنظيف أي محتوى سابق حتى لا تبقى بطاقات المستوى الثاني
+      // ظاهرة عند العودة إلى المستوى الأول.
+      container.innerHTML = '';
       empty.classList.add('hidden');
-      container.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto';
 
-      container.innerHTML = types.map((type) => {
-        const typeName = String(type.name || type.title || '').trim();
-        const icon = typeName === 'محاكاة تفاعلية للرياضيات'
-          ? 'calculator'
-          : 'monitor';
+      container.className =
+        'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto';
 
-        const count = contentRecords.filter(item =>
-          String(item.section || '') === 'learning-tools' &&
-          String(item.content_type || '').trim() === typeName &&
-          item.is_active !== false
-        ).length;
-
-        const typeArg = JSON.stringify(typeName)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;');
+      container.innerHTML = LEARNING_TOOLS_MAIN_TYPES.map(type => {
+        const count = getLearningToolsItems(type.name).length;
 
         return `<button type="button"
-          onclick='openLearningToolsType(${typeArg})'
+          onclick='openLearningToolsType(${JSON.stringify(type.name).replace(/'/g, '&#39;')})'
           class="card-hover rounded-2xl border border-purple-100 bg-white p-8 text-center shadow-sm hover:shadow-lg transition cursor-pointer">
           <div class="w-20 h-20 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-5">
-            <i data-lucide="${escapeHtml(icon)}" class="w-10 h-10 text-purple-600"></i>
+            <i data-lucide="${escapeHtml(type.icon)}" class="w-10 h-10 text-purple-600"></i>
           </div>
-          <h3 class="font-extrabold text-blue-950 text-xl">${escapeHtml(typeName)}</h3>
-          <p class="mt-3 text-sm leading-7 text-slate-500">${escapeHtml(type.description || '')}</p>
+          <h3 class="font-extrabold text-blue-950 text-xl">${escapeHtml(type.name)}</h3>
+          <p class="mt-3 text-sm leading-7 text-slate-500">${escapeHtml(type.description)}</p>
           <span class="inline-block mt-5 rounded-full bg-purple-50 px-4 py-2 text-xs font-bold text-purple-700">
             ${count.toLocaleString('ar-OM')} محتوى
           </span>
@@ -1180,20 +1173,28 @@
       const container = document.getElementById('generic-content-list');
       const empty = document.getElementById('generic-empty');
       const title = document.getElementById('generic-section-title');
+
       if (!container || !empty) return;
 
-      const safeTypeName = String(typeName || '').trim();
-
-      const items = contentRecords.filter(item =>
-        String(item.section || '') === 'learning-tools' &&
-        String(item.content_type || '').trim() === safeTypeName &&
-        item.is_active !== false
+      const requested = String(typeName || '').trim();
+      const mainType = LEARNING_TOOLS_MAIN_TYPES.find(
+        type => type.name === requested
       );
+
+      // لا نسمح بفتح مستوى داخلي من نوع غير معتمد.
+      if (!mainType) {
+        renderLearningToolsDirect();
+        return;
+      }
+
+      const safeTypeName = mainType.name;
+      const items = getLearningToolsItems(safeTypeName);
 
       if (title) title.textContent = `الوسائل التعليمية – ${safeTypeName}`;
 
       empty.classList.add('hidden');
-      container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+      container.className =
+        'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
 
       const backButton = `<div class="col-span-full mb-3 text-right">
         <button type="button" onclick="renderLearningToolsDirect()"
@@ -1205,14 +1206,24 @@
       if (!items.length) {
         container.innerHTML = `${backButton}
           <div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">
-            لا توجد محتويات مضافة لهذا القسم حاليًا.
+            لا توجد محتويات مضافة إلى «${escapeHtml(safeTypeName)}» حاليًا.
           </div>`;
         return;
       }
 
       container.innerHTML = backButton + items.map(item => {
-        // الرابط الأساسي هو link. image_url يبقى للصورة فقط.
+        // الرابط الأساسي هو link. image_url مخصص للصورة فقط.
         const href = String(item.link || '').trim();
+        const imageUrl = String(item.image_url || '').trim();
+
+        const image = imageUrl
+          ? `<img src="${escapeHtml(imageUrl)}"
+               alt="${escapeHtml(item.title || 'صورة المحتوى')}"
+               class="mb-4 h-40 w-full rounded-2xl object-cover border border-slate-100"
+               loading="lazy"
+               onerror="this.style.display='none';">`
+          : '';
+
         const action = href
           ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"
                 class="mt-4 inline-flex items-center justify-center rounded-xl bg-blue-600 px-5 py-2.5 font-bold text-white hover:bg-blue-700">
@@ -1222,8 +1233,9 @@
 
         return `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
           <div class="w-14 h-14 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
-            <i data-lucide="${safeTypeName === 'محاكاة تفاعلية للرياضيات' ? 'calculator' : 'monitor'}" class="w-7 h-7 text-purple-600"></i>
+            <i data-lucide="${escapeHtml(mainType.icon)}" class="w-7 h-7 text-purple-600"></i>
           </div>
+          ${image}
           <h3 class="font-extrabold text-blue-950 text-center">${escapeHtml(item.title || '')}</h3>
           <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
           <div class="text-center">${action}</div>
@@ -1623,10 +1635,32 @@
       const sec = sections.find(s => String(s.grade || s.slug || s.id) === sectionId);
       const isAnnouncement = sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
       const isPro = sec && String(sec.title || '').includes('التنمية المهنية');
+      const isLearningTools = sectionId === 'learning-tools';
 
       if (isAnnouncement) {
         typeSelect.innerHTML = '<option value="إعلان طلابي">إعلان طلابي</option>';
         typeSelect.value = 'إعلان طلابي';
+        return;
+      }
+
+      if (isLearningTools) {
+        typeSelect.innerHTML = LEARNING_TOOLS_MAIN_TYPES.map(t =>
+          `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`
+        ).join('');
+
+        if (preferredType) {
+          const preferred = String(preferredType).trim();
+          if (!Array.from(typeSelect.options).some(o => String(o.value) === preferred)) {
+            typeSelect.insertAdjacentHTML(
+              'beforeend',
+              `<option value="${escapeHtml(preferred)}">${escapeHtml(preferred)} (المحفوظ)</option>`
+            );
+          }
+          typeSelect.value = preferred;
+        } else {
+          typeSelect.value = LEARNING_TOOLS_MAIN_TYPES[0].name;
+        }
+
         return;
       }
 
@@ -1722,6 +1756,7 @@
       const sec = sections.find(s => s.grade === sectionId);
       const isAnnouncement = sectionId === STUDENT_ANNOUNCEMENTS_SECTION;
       const isPro = sec && sec.title.includes('التنمية المهنية');
+      const isLearningTools = sectionId === 'learning-tools';
 
       const gradeLabel = document.getElementById('grade-label');
       const typeSelect = document.getElementById('admin-content-type');
@@ -1732,6 +1767,28 @@
         typeSelect.innerHTML =
           '<option value="إعلان طلابي">إعلان طلابي</option>';
         typeSelect.value = 'إعلان طلابي';
+        return;
+      }
+
+      if (isLearningTools) {
+        gradeLabel.classList.add('hidden');
+        typeSelect.innerHTML = LEARNING_TOOLS_MAIN_TYPES
+          .map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`)
+          .join('');
+
+        if (preferredType) {
+          const preferred = String(preferredType).trim();
+          if (!Array.from(typeSelect.options).some(o => String(o.value) === preferred)) {
+            typeSelect.insertAdjacentHTML(
+              'beforeend',
+              `<option value="${escapeHtml(preferred)}">${escapeHtml(preferred)} (المحفوظ)</option>`
+            );
+          }
+          typeSelect.value = preferred;
+        } else {
+          typeSelect.value = LEARNING_TOOLS_MAIN_TYPES[0].name;
+        }
+
         return;
       }
 
