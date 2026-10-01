@@ -1086,71 +1086,49 @@
       const title = document.getElementById('generic-section-title');
       if (!container || !empty) return;
 
-      if (title) {
-        title.textContent = siteSections.find(s => String(s.grade || s.slug || s.id) === 'learning-tools')?.title || 'الوسائل التعليمية';
-      }
+      const sectionName = siteSections.find(s =>
+        String(s.grade || s.slug || s.id) === 'learning-tools'
+      )?.title || 'الوسائل التعليمية';
 
-      // المحتوى هو المستوى الأول في الصفحة العامة: لا صفوف ولا شاشة اختيار صف.
-      const items = contentRecords.filter(item =>
-        String(item.section || '') === 'learning-tools'
-      );
+      if (title) title.textContent = sectionName;
 
-      if (items.length) {
-        empty.classList.add('hidden');
-        container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
-        container.innerHTML = items.map(item => {
-          const typeLabel = item.content_type || 'محتوى تعليمي';
-          const icon = typeLabel.includes('فيديو') ? 'video' :
-            typeLabel.includes('عرض') ? 'presentation' :
-            typeLabel.includes('ورق') ? 'file-text' :
-            typeLabel.includes('نشاط') ? 'puzzle' : 'book-open';
-
-          return `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
-            <div class="w-14 h-14 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
-              <i data-lucide="${escapeHtml(icon)}" class="w-7 h-7 text-purple-600"></i>
-            </div>
-            <div class="text-center">
-              <span class="inline-block rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">${escapeHtml(typeLabel)}</span>
-              <h3 class="mt-3 font-extrabold text-blue-950">${escapeHtml(item.title || '')}</h3>
-              <p class="mt-2 text-sm text-slate-500">${escapeHtml(item.description || '')}</p>
-              ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="mt-4 inline-block font-bold text-blue-600 hover:underline">فتح المحتوى ←</a>` : ''}
-            </div>
-          </article>`;
-        }).join('');
-        lucide.createIcons();
-        return;
-      }
-
-      // لا يوجد محتوى بعد: اعرض الأنواع مباشرة، دون الصفوف.
+      // الوسائل التعليمية لها مستويان فقط:
+      // المستوى الأول = نوعا المحتوى الرئيسيان.
+      // المستوى الثاني = المحتوى الموجود داخل النوع المختار.
+      // لا نعرض المحتوى مباشرة في المستوى الأول.
       const structure = await fetchSectionStructure('learning-tools');
       const types = Array.isArray(structure.types) ? structure.types : [];
 
       if (!types.length) {
         container.innerHTML = '';
-        empty.textContent = 'لا توجد محتويات أو أنواع مضافة إلى الوسائل التعليمية حاليًا.';
+        empty.textContent = 'لا توجد أنواع مضافة إلى الوسائل التعليمية حاليًا.';
         empty.classList.remove('hidden');
         return;
       }
 
       empty.classList.add('hidden');
-      container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
+      container.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto';
       container.innerHTML = types.map((type, index) => {
-        const icons = ['file-text', 'presentation', 'video', 'puzzle', 'link', 'book-open'];
+        const icons = ['calculator', 'monitor'];
         const icon = type.icon || icons[index % icons.length];
+        const typeName = String(type.name || '');
         const count = contentRecords.filter(item =>
           String(item.section || '') === 'learning-tools' &&
-          String(item.content_type || '') === String(type.name || '')
+          String(item.content_type || '') === typeName
         ).length;
 
-        return `<button type="button" onclick="openLearningToolsType('${escapeHtml(type.name || '')}')" class="card-hover rounded-2xl border border-purple-100 bg-white p-7 text-center shadow-sm hover:shadow-md transition">
+        return `<button type="button"
+          onclick="openLearningToolsType('${escapeHtml(typeName)}')"
+          class="card-hover rounded-2xl border border-purple-100 bg-white p-7 text-center shadow-sm hover:shadow-md hover:-translate-y-0.5 transition cursor-pointer">
           <div class="w-16 h-16 mx-auto bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
             <i data-lucide="${escapeHtml(icon)}" class="w-8 h-8 text-purple-600"></i>
           </div>
-          <h3 class="font-extrabold text-blue-950 text-lg">${escapeHtml(type.name || '')}</h3>
+          <h3 class="font-extrabold text-blue-950 text-lg">${escapeHtml(typeName)}</h3>
           <p class="mt-2 text-sm text-slate-500">${escapeHtml(type.description || '')}</p>
           <span class="inline-block mt-4 rounded-full bg-purple-50 px-3 py-1 text-xs font-bold text-purple-700">${count.toLocaleString('ar-OM')} محتوى</span>
         </button>`;
       }).join('');
+
       lucide.createIcons();
     }
 
@@ -1160,26 +1138,46 @@
       const title = document.getElementById('generic-section-title');
       if (!container || !empty) return;
 
+      const safeTypeName = String(typeName || '');
       const items = contentRecords.filter(item =>
         String(item.section || '') === 'learning-tools' &&
-        String(item.content_type || '') === String(typeName || '')
+        String(item.content_type || '') === safeTypeName &&
+        item.is_active !== false
       );
 
-      title.textContent = `الوسائل التعليمية – ${typeName}`;
-      if (!items.length) {
-        container.innerHTML = '';
-        empty.textContent = 'لا توجد محتويات مضافة لهذا النوع حاليًا.';
-        empty.classList.remove('hidden');
-        return;
-      }
+      if (title) title.textContent = `الوسائل التعليمية – ${safeTypeName}`;
 
       empty.classList.add('hidden');
       container.className = 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5';
-      container.innerHTML = items.map(item => `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
-        <h3 class="font-bold text-blue-950 text-center">${escapeHtml(item.title || '')}</h3>
-        <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
-        ${item.link ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer" class="block mt-3 text-center text-sm text-blue-600 hover:underline">فتح ←</a>` : ''}
-      </article>`).join('');
+
+      const backButton = `<div class="col-span-full mb-2 text-right">
+        <button type="button" onclick="renderLearningToolsDirect()"
+          class="rounded-xl border border-purple-200 bg-white px-4 py-2 font-bold text-purple-700 hover:bg-purple-50">
+          ← العودة إلى الوسائل التعليمية
+        </button>
+      </div>`;
+
+      if (!items.length) {
+        container.innerHTML = `${backButton}<div class="col-span-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-500">لا توجد محتويات مضافة لهذا النوع حاليًا.</div>`;
+        return;
+      }
+
+      container.innerHTML = backButton + items.map(item => {
+        const href = item.link ? escapeHtml(item.link) : '';
+        const action = href
+          ? `<a href="${href}" target="_blank" rel="noopener noreferrer"
+                class="mt-4 inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700">
+                فتح المحتوى ←
+             </a>`
+          : `<span class="mt-4 inline-block text-sm text-slate-400">لا يوجد رابط لهذا المحتوى</span>`;
+
+        return `<article class="card-hover rounded-2xl border border-purple-100 bg-white p-6 shadow-sm">
+          <h3 class="font-bold text-blue-950 text-center">${escapeHtml(item.title || '')}</h3>
+          <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
+          <div class="text-center">${action}</div>
+        </article>`;
+      }).join('');
+
       lucide.createIcons();
     }
 
