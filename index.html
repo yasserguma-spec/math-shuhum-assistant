@@ -865,27 +865,85 @@ octype html>
 
     function openContent(type) {
       const ws = document.getElementById('content-workspace');
+      if (!ws) return;
+
       ws.classList.remove('hidden');
       document.querySelector('[data-template-id="workspace-title"]').textContent = type;
-      const matches = contentRecords.filter(i => i.grade === currentGrade && i.section === currentSectionId);
-      const cardsContainer = document.getElementById('workspace-content-cards');
-      const typeMatches = matches.filter(i => {
-        if (type === 'الدروس') return i.content_type === 'درس';
-        if (type === 'ملخصات') return i.content_type === 'ملخص';
-        if (type === 'فيديوهات تعليمية') return i.content_type === 'فيديو';
-        if (type === 'روابط مفيدة') return i.content_type === 'رابط خارجي';
-        if (type === 'الاختبارات') return i.content_type === 'اختبار';
-        if (type === 'العروض التقديمية') return i.content_type === 'عرض';
-        if (type === 'أنشطة وتدريبات') return i.content_type === 'نشاط';
-        return false;
+
+      // ============================================================
+      // عرض محتوى الصف المحدد
+      // يدعم أسماء الأنواع القديمة والجديدة، ولا يعتمد على اسم البطاقة فقط.
+      // ============================================================
+      const currentGradeValue = String(currentGrade || '').trim();
+      const currentSectionValue = String(currentSectionId || '').trim();
+
+      const matches = contentRecords.filter(item => {
+        const itemSection = String(item.section || item.section_slug || item.section_id || '').trim();
+        const itemGrade = String(item.grade || item.grade_slug || item.grade_id || '').trim();
+
+        const sectionMatches = itemSection === currentSectionValue;
+        const gradeMatches =
+          !currentGradeValue ||
+          itemGrade === currentGradeValue ||
+          String(item.grade_id || '').trim() === currentGradeValue;
+
+        return sectionMatches && gradeMatches && item.is_active !== false;
       });
+
+      const typeAliases = {
+        'الدروس': ['درس', 'الدروس'],
+        'ملخصات': ['ملخص', 'ملخصات'],
+        'فيديوهات تعليمية': ['فيديو', 'فيديوهات تعليمية'],
+        'ألعاب تعليمية': ['ألعاب تعليمية', 'روابط مفيدة', 'رابط خارجي'],
+        'روابط مفيدة': ['روابط مفيدة', 'رابط خارجي', 'ألعاب تعليمية'],
+        'الاختبارات': ['اختبار', 'الاختبارات'],
+        'العروض التقديمية': ['عرض', 'العروض التقديمية'],
+        'أنشطة وتدريبات ومشاريع': ['أنشطة وتدريبات ومشاريع', 'أنشطة وتدريبات', 'نشاط'],
+        'أنشطة وتدريبات': ['أنشطة وتدريبات', 'أنشطة وتدريبات ومشاريع', 'نشاط']
+      };
+
+      const aliases = typeAliases[type] || [type];
+      const typeMatches = matches.filter(item =>
+        aliases.includes(String(item.content_type || '').trim())
+      );
+
+      const cardsContainer = document.getElementById('workspace-content-cards');
+      const emptyEl = document.querySelector('[data-template-id="workspace-empty"]');
+      if (!cardsContainer || !emptyEl) return;
+
       if (typeMatches.length) {
-        document.querySelector('[data-template-id="workspace-empty"]').textContent = '';
-        cardsContainer.innerHTML = typeMatches.map(i => `<div class="rounded-2xl border bg-white p-4 shadow-sm"><strong class="text-blue-950">${escapeHtml(i.title)}</strong><p class="text-sm text-slate-500 mt-1">${escapeHtml(i.description || '')}</p>${i.link ? `<a href="${escapeHtml(i.link)}" target="_blank" rel="noopener noreferrer" class="inline-block mt-2 text-sm text-blue-600 hover:underline">فتح الرابط ←</a>` : ''}</div>`).join('');
+        emptyEl.textContent = '';
+        cardsContainer.innerHTML = typeMatches.map(item => {
+          const href = String(item.link || '').trim();
+          const imageUrl = String(item.image_url || '').trim();
+
+          const image = imageUrl
+            ? `<img src="${escapeHtml(imageUrl)}"
+                 alt="${escapeHtml(item.title || 'صورة المحتوى')}"
+                 class="mb-4 h-40 w-full rounded-2xl object-cover border border-slate-100"
+                 loading="lazy"
+                 onerror="this.style.display='none';">`
+            : '';
+
+          const action = href
+            ? `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer"
+                  class="inline-flex mt-3 rounded-xl bg-blue-600 px-4 py-2 font-bold text-white hover:bg-blue-700">
+                  فتح المحتوى ←
+               </a>`
+            : `<span class="inline-block mt-3 text-sm text-slate-400">لا يوجد رابط لهذا المحتوى</span>`;
+
+          return `<article class="card-hover rounded-2xl border border-blue-100 bg-white p-5 shadow-sm">
+            ${image}
+            <strong class="block text-blue-950 text-center">${escapeHtml(item.title || '')}</strong>
+            <p class="text-sm text-slate-500 mt-2 text-center">${escapeHtml(item.description || '')}</p>
+            <div class="text-center">${action}</div>
+          </article>`;
+        }).join('');
       } else {
-        document.querySelector('[data-template-id="workspace-empty"]').textContent = 'مساحة فارغة جاهزة لإضافة المحتوى.';
+        emptyEl.textContent = 'لا توجد محتويات مضافة لهذا النوع في هذا الصف حاليًا.';
         cardsContainer.innerHTML = '';
       }
+
       ws.scrollIntoView({ behavior: 'smooth' });
     }
 
